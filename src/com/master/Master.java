@@ -1,10 +1,12 @@
 package com.master;
 
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-
-import com.client.ClientFS;
+import com.client.Client;
 
 public class Master {
 
@@ -17,21 +19,17 @@ public class Master {
 	public static final int OPEN_FILE = 7;
 	public static final int CLOSE_FILE = 8;
 	public static final int REGISTRATION_MESSAGE = 9;
+	public static final int HEART_BEAT_MESSAGE = 10;
 	
 	public static void main (String args[]){
-		Map<String, ArrayList<String>> directory = new HashMap <String, ArrayList<String>>();
-		ArrayList<String> test = new ArrayList<String>();
 		
-		directory.put("test1", test);
-		directory.get("test1").add("haa");
-		System.out.println(directory.get("test1").size());
-		System.out.println(directory.get("test1").size()); // just a few tests to see how map works
+		DirectoryManager dirManager = new DirectoryManager();
 		
-		ArrayList<String> test2 = directory.get("test1");
-		test2.add("asdasd");
+		Thread clientThread = new Thread(new ClientThread(50000, dirManager));
+		clientThread.start();
 		
-		directory.put("test1", test2);
-		System.out.println(directory.get("test1").size());
-	}
-	
+		Thread serverThread = new Thread(new ServerThread(50000, dirManager));
+		serverThread.start();
+		
+	}	
 }

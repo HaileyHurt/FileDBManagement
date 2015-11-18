@@ -8,39 +8,35 @@ import java.util.ArrayList;
 import com.client.Client;
 
 public class ServerThreadCom implements Runnable {
-	
-	private ChunkToServers chunksmap;
-	private ArrayList <String> servers;
-	
 	private Socket ServerConnection;
-	private ObjectInputStream ReadInput;
-	private ObjectOutputStream WriteOutput; // for the communication with the server
-		
-	public ServerThreadCom (Socket ServerConnection, ChunkToServers chunksmap, ArrayList <String> servers){
+	private DirectoryManager dirManager;
+	
+	public ServerThreadCom (Socket ServerConnection, DirectoryManager dirManager){
 		this.ServerConnection = ServerConnection;
-		this.chunksmap = chunksmap;
-		this.servers = servers;
+		this.dirManager = dirManager;
 	}
 	
 	public void run (){
 		try {
-			ReadInput = new ObjectInputStream(ServerConnection.getInputStream());
-			WriteOutput = new ObjectOutputStream(ServerConnection.getOutputStream());
+			ObjectOutputStream WriteOutput = new ObjectOutputStream(ServerConnection.getOutputStream());
+			ObjectInputStream ReadInput = new ObjectInputStream(ServerConnection.getInputStream());
 			
 			while (!ServerConnection.isClosed()){
-				int operation =  Client.ReadIntFromInputStream("ServerThreadCom", ReadInput);
+				int operation = Client.ReadIntFromInputStream("ServerThreadCom", ReadInput);
 				System.out.println ("Operation: " + operation);
 				
 				switch (operation){
-					case Master.REGISTRATION_MESSAGE:
-						// read the number of chunks
-						// read the chunkname size
-						// read the chunkname... and so on
+					case Master.HEART_BEAT_MESSAGE:
+					
+					case -1:
 					default:
 						System.out.println("Error.. (ServerThreadCom): Invalid operation!");
 				}
 			}
-			
+
+			ReadInput.close();
+			WriteOutput.close();
+			ServerConnection.close();
 		}
 		catch (Exception e){
 			System.out.println ("Error at Master:ServerThreadCom");

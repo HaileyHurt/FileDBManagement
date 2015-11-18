@@ -1,16 +1,25 @@
 package com.master;
 
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+import com.client.Client;
+
 public class ClientThread implements Runnable {
-	private DirectoryTree directory;
+	private DirectoryManager dirManager;
 	private int port;
 	
 	public ClientThread (int port){
 		this.port = port;
-		directory = new DirectoryTree();
+		dirManager = new DirectoryManager();
+	}
+	
+	public ClientThread (int port, DirectoryManager dirManager){
+		this.port = port;
+		this.dirManager = dirManager;
 	}
 	
 	public void run() {
@@ -24,26 +33,16 @@ public class ClientThread implements Runnable {
 		}
 		
 		boolean done = false;
-		Socket ClientConnection = null;
 		while (!done){
 			try {
-				ClientConnection = commChanel.accept();
-				Thread thr = new Thread(new ClientThreadCom(ClientConnection, directory));
-				thr.start();				
+				Socket ClientConnection = commChanel.accept();
+				System.out.println ("Connection with: " + ClientConnection.getLocalAddress());
+				
+				Thread th1 = new Thread(new ClientThreadCom(ClientConnection, dirManager));
+				th1.start();
 			}
-			catch (IOException ex){
-				System.out.println("Client Disconnected");
-			}
-			finally {
-				try {
-					if (ClientConnection != null){
-						ClientConnection.close();
-					}
-				}
-				catch (IOException fex){
-					System.out.println("Error (Master:ClientThread): Failed to close a valid connection.");
-					fex.printStackTrace();
-				}
+			catch (Exception ex){
+				ex.printStackTrace();
 			}
 		}
 	}

@@ -10,14 +10,17 @@ import java.util.ArrayList;
 import com.client.Client;
 
 public class ServerThread implements Runnable {
-	private ChunkToServers chunksmap;
-	private ArrayList<String> servers;
 	private int port;
+	private DirectoryManager dirManager;
 	
-	public ServerThread (int port, ChunkToServers chunksmap, ArrayList<String> servers){
+	public ServerThread (int port){
 		this.port = port;
-		this.chunksmap = chunksmap;
-		this.servers = servers;
+		dirManager = new DirectoryManager();
+	}
+	
+	public ServerThread (int port, DirectoryManager dirManager){
+		this.port = port;
+		this.dirManager = dirManager;
 	}
 	
 	public void run() {
@@ -31,26 +34,15 @@ public class ServerThread implements Runnable {
 		}
 		
 		boolean done = false;
-		Socket ServerConnection = null;
+		
 		while (!done){
 			try {
-				ServerConnection = commChanel.accept();
-				Thread thr = new Thread(new ServerThreadCom(ServerConnection, chunksmap, servers));
+				Socket ServerConnection = commChanel.accept();
+				Thread thr = new Thread(new ServerThreadCom(ServerConnection, dirManager));
 				thr.start();				
 			}
 			catch (IOException ex){
 				System.out.println("Server Disconnected");
-			}
-			finally {
-				try {
-					if (ServerConnection != null){
-						ServerConnection.close();
-					}
-				}
-				catch (IOException fex){
-					System.out.println("Error (Master:ServertThread): Failed to close a valid connection.");
-					fex.printStackTrace();
-				}
 			}
 		}
 	}

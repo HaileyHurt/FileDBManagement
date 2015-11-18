@@ -7,42 +7,52 @@ import java.net.Socket;
 import com.client.Client;
 
 public class ClientThreadCom implements Runnable {
-	private DirectoryTree directory;
+	private DirectoryManager dirManager;
 	private Socket ClientConnection;
-	private ObjectInputStream ReadInput;
-	private ObjectOutputStream WriteOutput; // for the communication with the client
 		
-	public ClientThreadCom (Socket ClientConnection, DirectoryTree directory){
+	public ClientThreadCom (Socket ClientConnection, DirectoryManager directory){
 		this.ClientConnection = ClientConnection;
-		this.directory = directory;
+		this.dirManager = directory;	
 	}
 	
 	 public void run (){
 		try {
-			ReadInput = new ObjectInputStream(ClientConnection.getInputStream());
-			WriteOutput = new ObjectOutputStream(ClientConnection.getOutputStream());
+			ObjectOutputStream WriteOutput = new ObjectOutputStream(this.ClientConnection.getOutputStream());
+			ObjectInputStream ReadInput = new ObjectInputStream(this.ClientConnection.getInputStream());
 			
 			while (!ClientConnection.isClosed()){
-				int operation =  Client.ReadIntFromInputStream("ClientThreadCom", ReadInput);
-				System.out.println ("Operation: " + operation);
-				
+				int operation = Client.ReadIntFromInputStream("ClientThreadCom", ReadInput);
 				switch (operation){
 					case Master.CREATE_DIR:
 						int srcSize = Client.ReadIntFromInputStream("ClientThreadCom", ReadInput);
 						byte[] filePath = Client.RecvPayload("ClientThreadCom", ReadInput, srcSize);
 						String strFilePath = new String (filePath);
-						
 						int dirSize = Client.ReadIntFromInputStream("ClientThreadCom", ReadInput);
 						byte[] dirName = Client.RecvPayload("ClientThreadCom", ReadInput, dirSize);
 						String strDirName = new String (dirName);
 						
-						directory.createDir(strFilePath, strDirName);
+						boolean result = dirManager.createDir(strFilePath, strDirName);
+						int resultInt = 0;
+						if (result){
+							resultInt = 1;
+						}
 						
+						WriteOutput.writeInt(resultInt);
+						WriteOutput.flush();
+						ClientConnection.close();
+						break;
+					case -1:
+						ClientConnection.close();
+						break;
 					default:
 						System.out.println("Error.. (ClientThreadCom): Invalid operation!");
+						ClientConnection.close();						
+						break;
 				}
 			}
 			
+			ReadInput.close();
+			WriteOutput.close();
 		}
 		catch (Exception e){
 			System.out.println ("Error at Master:ClientThreadCom");
