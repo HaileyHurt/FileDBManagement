@@ -17,5 +17,5 @@ public class Master {
 		catch (Exception e){
 			e.printStackTrace();
 		}
-	}	
+	}
 }

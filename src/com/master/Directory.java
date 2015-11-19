@@ -101,7 +101,7 @@ public class Directory {
 	
 	public synchronized String[] openFile(String filename){
 		for (int i = 0; i < files.size(); i++){
-			if (files.get(i).getFilename() == filename){
+			if (files.get(i).getFilename().equals(filename)){
 				return files.get(i).getChunksStr();
 			}
 		}
@@ -111,6 +111,16 @@ public class Directory {
 	
 	public synchronized void setDirectoryName(String newName){
 		this.dirName = newName;
+	}
+	
+	public synchronized TinyFSFile getFile(String filename){
+		for (int i = 0; i < files.size(); i++){
+			if (files.get(i).getFilename().equals(filename)){
+				return files.get(i);
+			}
+		}
+		
+		return null;
 	}
 	
 	// only for debug

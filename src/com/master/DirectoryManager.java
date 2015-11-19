@@ -1,9 +1,18 @@
 package com.master;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 import com.client.ClientFS.FSReturnVals;
+
+import utilities.Constants;
 
 public class DirectoryManager {
 	private static long chunkHandle;
@@ -11,17 +20,92 @@ public class DirectoryManager {
 	private Map<String, ArrayList<String>> chunks; // maping chunks to servers
 	private Map<String, Lease> leases; // maping chunks to Lease
 	private ArrayList<String> servers;
+	private ArrayList<String> operations;
 	
 	public DirectoryManager (){
 		chunkHandle = 1;
 		root = new Directory();
+		operations = new ArrayList<String>();
+		leases = new HashMap<String, Lease>();
+		servers = new ArrayList<String>();
 	}
 	
-	public boolean createDir(String src, String dirname) {
+	public DirectoryManager (String logFile){
+		chunkHandle = 1;
+		root = new Directory();
+		operations = new ArrayList<String>();
+		leases = new HashMap<String, Lease>();
+		servers = new ArrayList<String>();
+		
+		recoverFromLog(logFile);
+		
+	}
+	
+	public void recoverFromLog(String logFile){
+		try {
+			BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile));
+			
+			String line;
+			while((line = bufferedReader.readLine()) != null) {
+	            String splittedLine[] = line.split(";");
+	            if (splittedLine[0].equals("createDir")){
+	            	createDir(splittedLine[1], splittedLine[2]);
+	            }	            
+	            if (splittedLine[0].equals("deleteDir")){
+	            	deleteDir(splittedLine[1], splittedLine[2]);
+	            }	            
+	            if (splittedLine[0].equals("renameDir")){
+	            	renameDir(splittedLine[1], splittedLine[2]);
+	            }	            
+	            if (splittedLine[0].equals("createFile")){
+	            	createFile(splittedLine[1], splittedLine[2]);
+	            }	            
+	            if (splittedLine[0].equals("deleteFile")){
+	            	deleteFile(splittedLine[1], splittedLine[2]);
+	            }	            
+	            if (splittedLine[0].equals("createChunk")){
+	            	deleteFile(splittedLine[1], splittedLine[2]);
+	            }	            
+	        }
+			
+			
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
+	}
+	
+	public synchronized void storeInLog(){
+		try {
+			Random rand = new Random();
+			int randomNumber = rand.nextInt(100) + 1;
+			if (randomNumber <= Constants.MASTER_PROBABILITY){
+				PrintWriter outWrite = new PrintWriter(new BufferedWriter(new FileWriter(Constants.masterLogFile, true)));
+				
+				for (int i = 0; i < operations.size(); i++){
+					outWrite.println(operations.get(i));
+				}
+				
+				operations = new ArrayList<String>();
+				outWrite.close();
+			}
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
+	}
+	
+	public boolean createDir(String src, String dirname) {		
 		Directory target = getDirectory(src);
 		if (target != null){
-			System.out.println("Source found!");
-			return target.createDir(dirname);
+			boolean result = target.createDir(dirname);
+			
+			if (result){
+				operations.add ("createDir;" + src + ";" + dirname);
+				storeInLog();
+			}
+			
+			return result;
 		}
 		
 		return false; // FSReturnVals.SrcDirNotExistent;
@@ -29,9 +113,14 @@ public class DirectoryManager {
 	
 	public boolean deleteDir(String src, String dirname) {
 		Directory target = getDirectory(src);
-		System.out.println ("SRC: " + src + " Dirname: " + dirname);
 		if (target != null){
-			return target.deleteDir(dirname);
+			boolean result = target.deleteDir(dirname);
+			if (result){
+				operations.add ("deleteDir;" + src + ";" + dirname);
+				storeInLog();
+			}
+			
+			return result;
 		}
 		
 		return false; // FSReturnVals.SrcDirNotExistent;
@@ -42,6 +131,10 @@ public class DirectoryManager {
 		
 		if (target != null){
 			target.setDirectoryName(dirname);
+			
+			operations.add ("renameDir;" + src + ";" + dirname);
+			storeInLog();
+			
 			return true;
 		}
 		
@@ -62,7 +155,13 @@ public class DirectoryManager {
 		Directory target = getDirectory(src);
 		
 		if (target != null){
-			return target.createFile(filename);
+			boolean result = target.createFile(filename);
+			if (result){
+				operations.add ("createFile;" + src + ";" + filename);
+				storeInLog();
+			}
+			
+			return result;
 		}
 		
 		return false;
@@ -72,7 +171,15 @@ public class DirectoryManager {
 		Directory target = getDirectory(src);
 		
 		if (target != null){
-			return target.deleteFile(filename);
+			boolean result = target.deleteFile(filename);
+			
+			if (result){
+				operations.add ("deleteFile;" + src + ";" + filename);
+				storeInLog();
+			}
+			
+			return result;
+			
 		}
 		
 		return false;
@@ -134,6 +241,23 @@ public class DirectoryManager {
 	
 	public void print (){
 		root.print();
+	}
+	
+	public boolean createChunk (String src, String filename){
+		Directory target = getDirectory(src);
+		
+		if (target != null){
+			TinyFSFile tfs = target.getFile(filename);
+			tfs.addChunk("" + chunkHandle);
+			chunkHandle++;
+			
+			operations.add("createChunk;" + src + ";" + filename);
+			storeInLog();
+			
+			return true;
+		}
+		
+		return false;
 	}
 	
 }

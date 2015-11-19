@@ -1,0 +1,3 @@
+createDir;/;jd
+createDir;/jd;abc
+renameDir;/jd/abc;dnine

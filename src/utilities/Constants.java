@@ -1,14 +1,18 @@
 package utilities;
 
 public class Constants {
+    public final static String masterLogFile = "master_log.txt";
 	public final static String filePath = "csci485/";	//or C:\\newfile.txt
-	public final static String ConfigFile = "config";
+	public final static String ConfigFile = "config.txt";
 	public final static int ChunkSize = 1024 * 1024; //1 MB chunk sizes
 	public static int PayloadSZ = Integer.SIZE/Byte.SIZE;  //Number of bytes in an integer
 	public static int CMDlength = Integer.SIZE/Byte.SIZE;  //Number of bytes in an integer 
 	
 	//heartbeat message interval in millicseconds
 	public static final int HeartBeatInterval = 2000;
+	
+	// 
+	public static final int MASTER_PROBABILITY = 100;
 	
 	//Replies provided by the server
 	public static final int FALSE = 0;
@@ -40,6 +44,8 @@ public class Constants {
     public static final int OPEN_FILE = 20;
     public static final int CLOSE_FILE = 21;
     public static final int REGISTRATION_MESSAGE = 22;
+    
+    
     public static final int APPEND_RECORD = 23;
     public static final int DELETE_RECORD = 24;
     public static final int READ_FIRST_RECORD = 25;

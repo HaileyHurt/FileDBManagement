@@ -32,8 +32,11 @@ public class ClientThreadCom implements Runnable {
 						ClientConnection.close();
 						break;
 					case Constants.DELETE_DIR:
-						System.out.println("Deleting something..");
 						deleteDirProcedure(WriteOutput, ReadInput);
+						ClientConnection.close();
+						break;
+					case Constants.RENAME_DIR:
+						renameDirProcedure(WriteOutput, ReadInput);
 						ClientConnection.close();
 						break;
 					case -1:
@@ -100,4 +103,26 @@ public class ClientThreadCom implements Runnable {
 		
 		WriteOutput.flush();
 	 }
+	 
+	 public void renameDirProcedure(ObjectOutputStream WriteOutput, ObjectInputStream ReadInput) throws IOException{
+			int srcSize = Client.ReadIntFromInputStream("ClientThreadCom", ReadInput);
+			byte[] srcPath = Client.RecvPayload("ClientThreadCom", ReadInput, srcSize);
+			
+			String strPath = new String (srcPath);
+			
+			int dirSize = Client.ReadIntFromInputStream("ClientThreadCom", ReadInput);
+			byte[] dirName = Client.RecvPayload("ClientThreadCom", ReadInput, dirSize);
+			String strDirName = new String (dirName);
+			
+			boolean result = dirManager.renameDir(strPath, strDirName);
+			
+			if (result == true){
+				WriteOutput.writeInt(1);
+			}
+			else {
+				WriteOutput.writeInt(0);
+			}
+			
+			WriteOutput.flush();
+		 }
 }
