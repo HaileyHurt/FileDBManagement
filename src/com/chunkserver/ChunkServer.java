@@ -488,6 +488,11 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 				
 				file.seek(chunk.getPosition() + Long.BYTES); //seek to start of first record
 				int recSize = file.readInt();
+				if(recSize == 0) {
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;					
+				}
 				byte[] data = new byte[recSize];
 				file.read(data, 0, recSize);
 				clientWriteStream.writeInt(recSize);
@@ -500,7 +505,51 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 		}
 		
 		private void readLastRecord() {
-			
+			long handle = Client.ReadLongFromInputStream("client:"+socket.getInetAddress(), clientReadStream);
+			ChunkInfo chunk = chunkMap.get(Long.toString(handle));
+			try {
+				if(chunk == null) {
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;
+				}
+				
+				RandomAccessFile file = fileMap.get(chunk.getFilename());
+				if(file == null) {
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;
+				}
+				
+				file.seek(chunk.getPosition() + Long.BYTES); //seek to start of first record
+				//iterate to the last record
+				int recSize = file.readInt();
+				if(recSize == 0) {
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;					
+				}
+				long pos = file.getFilePointer();
+				while(true) {					
+					file.seek(pos + recSize);
+					int nextRecSize = file.readInt();
+					if(recSize == 0) break; //last record reached
+					else {
+						recSize = nextRecSize;
+						pos = file.getFilePointer();
+						if(pos+recSize >= file.length()) break; //end of chunk reached
+					}
+				}
+				file.seek(pos); //seek to position of last record
+				byte[] data = new byte[recSize];
+				file.read(data, 0, recSize);
+				clientWriteStream.writeInt(recSize);
+				clientWriteStream.write(data);
+				clientWriteStream.flush();
+			}
+			catch (IOException e) {
+				e.printStackTrace();
+			}				
 		}
 		
 		private void readNextRecord() {
@@ -535,26 +584,23 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 						readFirstRecord();
 						break;
 					case Constants.READ_LAST_RECORD:
-						clientWriteStream.writeInt(Constants.TRUE);
-						clientWriteStream.flush();
+						readLastRecord();
 						break;
 					case Constants.READ_NEXT_RECORD:
-						clientWriteStream.writeInt(Constants.TRUE);
-						clientWriteStream.flush();
+						readNextRecord();
 						break;
 					case Constants.READ_PREV_RECORD:
-						clientWriteStream.writeInt(Constants.TRUE);
-						clientWriteStream.flush();
-						break;
-					case Constants.APPEND_RECORD:
-						clientWriteStream.writeInt(Constants.TRUE);
-						clientWriteStream.flush();
-						break;
+						readPrevRecord();
+						break;					
 					case Constants.DATA_TO_WRITE:
 						clientWriteStream.writeInt(Constants.TRUE);
 						clientWriteStream.flush();
 						break;
+					case Constants.APPEND_RECORD:
+						appendRecord();
+						break;
 					case Constants.DELETE_RECORD:
+						deleteRecord();
 						break;
 					default:
 						break;

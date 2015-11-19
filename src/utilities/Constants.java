@@ -22,6 +22,9 @@ public class Constants {
 	public static final int PING = 4;
 	public static final int DATA_TO_WRITE = 5;
 	
+	//chunkserver to client
+	public static final int NOT_IN_CHUNK = -1;
+	
 	//master to chunkserver
 	public static final int SendLease = 11;
 	public static final int CreateChunk = 12;
