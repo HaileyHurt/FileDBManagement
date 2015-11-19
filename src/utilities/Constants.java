@@ -5,7 +5,10 @@ public class Constants {
 	public final static String ConfigFile = "config";
 	public final static int ChunkSize = 1024 * 1024; //1 MB chunk sizes
 	public static int PayloadSZ = Integer.SIZE/Byte.SIZE;  //Number of bytes in an integer
-	public static int CMDlength = Integer.SIZE/Byte.SIZE;  //Number of bytes in an integer  
+	public static int CMDlength = Integer.SIZE/Byte.SIZE;  //Number of bytes in an integer 
+	
+	//heartbeat message interval in millicseconds
+	public static final int HeartBeatInterval = 2000;
 	
 	//Replies provided by the server
 	public static final int FALSE = 0;
@@ -27,16 +30,8 @@ public class Constants {
 	//master to chunkserver
 	public static final int SendLease = 11;
 	public static final int CreateChunk = 12;
-	public static final int DeleteChunks = 13;	
+	public static final int DeleteChunks = 13;		
 	
-	//heartbeat message interval in millicseconds
-	public static final int HeartBeatInterval = 2000;
-	
-	//Commands recognized by the Server
-	public static final int CreateChunkCMD = 101;
-	public static final int ReadChunkCMD = 102;
-	public static final int WriteChunkCMD = 103;
-    
     // Client to master commands
     public static final int CREATE_DIR = 14;
     public static final int DELETE_DIR = 15;
@@ -53,6 +48,14 @@ public class Constants {
     public static final int READ_LAST_RECORD = 26;
     public static final int READ_NEXT_RECORD = 27;
     public static final int READ_PREV_RECORD = 28;
+    
+    //connection type identification
+    public static final int IsClient = 29;
+    public static final int IsChunkServer = 30;
 
-
+	//Commands recognized by the Server
+	public static final int CreateChunkCMD = 101;
+	public static final int ReadChunkCMD = 102;
+	public static final int WriteChunkCMD = 103;
+    
 }

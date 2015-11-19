@@ -34,13 +34,10 @@ import com.interfaces.ChunkServerInterface;
  *
  */
 
-public class ChunkServer implements ChunkServerInterface, Runnable {
-
-	
+public class ChunkServer implements ChunkServerInterface, Runnable {	
 	//Used for the file system
 	public static long counter;
 	
-
 	
 	//Define data for distributed chunkserver
 	HashMap<String, RandomAccessFile> fileMap;
@@ -264,6 +261,11 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 		}
 		masterWriteLock.unlock();
 	}
+	
+	public void sendLease(long chunkhandle) {
+		//asdf
+		
+	}
 
 	@Override
 	public void run() {
@@ -367,6 +369,8 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 						e.printStackTrace();
 					}
 					masterWriteLock.unlock();
+					break;
+				case Constants.CreateChunk:
 					break;
 				case Constants.DeleteChunks:
 					break;
