@@ -32,31 +32,57 @@ public class ClientRec {
     public static final int READ_LAST_RECORD = 13;
     public static final int READ_NEXT_RECORD = 14;
     public static final int READ_PREV_RECORD = 15;
-
+    
+    public Master master;
+    public ChunkServer chunkserver;
+    public Client client;
+    public Socket clientSocket;
+    public ObjectOutputStream masterOutput;
+    public ObjectInputStream masterInput;
+    
+    public ClientRec()
+    {
+        client = new Client();
+        
+        try
+        {
+            if (master == null)
+            {
+                clientSocket = new Socket("localhost", 2345);
+                
+                masterOutput = new ObjectOutputStream(clientSocket.getOutputStream());
+                masterInput = new ObjectInputStream(clientSocket.getInputStream());
+            }
+        }
+        catch
+        {
+            System.out.println("Error creating socket (ClientFS:43)");
+        }
+    }
     
 	public FSReturnVals AppendRecord(FileHandle ofh, byte[] payload, RID RecordID)
     {
         FSReturnVals outcome;
         try
         {
-            ClientFS.WriteOutput.writeInt(APPEND_RECORD);
-            ClientFS.WriteOutput.writeObject(ofh);
-            ClientFS.WriteOutput.flush();
-            ClientFS.WriteOutput.writeObject(RecordID);
-            ClientFS.WriteOutput.flush();
-            ClientFS.WriteOutput.writeInt(payload.length);
-            ClientFS.WriteOutput.flush();
+            masteroutput.writeInt(APPEND_RECORD);
+            masteroutput.writeObject(ofh);
+            masteroutput.flush();
+            masteroutput.writeObject(RecordID);
+            masteroutput.flush();
+            masteroutput.writeInt(payload.length);
+            masteroutput.flush();
             
             
-            FileHandle fh = (FileHandle) ClientFS.ReadInput.readObject();
+            FileHandle fh = (FileHandle) masterInput.readObject();
             ofh.getFileName = fh.getFileName;
             
-            RID rid = (RID) ClientFS.ReadInput.readObject();
+            RID rid = (RID) masterInput.readObject();
             RecordID.chunkhandle = rid.chunkhandle;
             RecordID.byteoffset = rid.byteoffset;
             RecordID.size = rid.size;
             
-            outcome = ClientFS.ReadInput.readUTF();
+            outcome = masterInput.readUTF();
             
         }
         catch (Exception e)
@@ -84,25 +110,25 @@ public class ClientRec {
         FSReturnVals outcome;
         try
         {
-            ClientFS.WriteOutput.writeInt(DELETE_RECORD);
-            ClientFS.WriteOutput.writeObject(ofh);
-            ClientFS.WriteOutput.flush();
-            ClientFS.WriteOutput.writeObject(RecordID);
-            ClientFS.WriteOutput.flush();
+            masteroutput.writeInt(DELETE_RECORD);
+            masteroutput.writeObject(ofh);
+            masteroutput.flush();
+            masteroutput.writeObject(RecordID);
+            masteroutput.flush();
             
-            FileHandle fh = (FileHandle) ClientFS.ReadInput.readObject();
+            FileHandle fh = (FileHandle) masterInput.readObject();
             ofh.setFileName = fh.getFileName;
             if (fh.isOpen())
             {
                 ofh.open();
             }
             
-            RID rid = (RID) ClientFS.ReadInput.readObject();
+            RID rid = (RID) masterInput.readObject();
             RecordID.setChunkHandle() = rid.getChunkHandle();
             RecordID.setOffset() = rid.getOffset();
             RecordID.setRecordSize() = rid.getRecordSize();
             
-            outcome = ClientFS.ReadInput.readUTF();
+            outcome = masterInput.readUTF();
             
         }
         catch (Exception e)
@@ -125,21 +151,21 @@ public class ClientRec {
         
         try
         {
-            ClientFS.WriteOutput.writeInt(READ_FIRST_RECORD);
-            ClientFS.WriteOutput.writeObject(ofh);
-            ClientFS.WriteOutput.flush();
+            masteroutput.writeInt(READ_FIRST_RECORD);
+            masteroutput.writeObject(ofh);
+            masteroutput.flush();
             
-            FileHandle fh = (FileHandle) ClientFS.ReadInput.readObject();
+            FileHandle fh = (FileHandle) masterInput.readObject();
             ofh.getFileName = fh.setFileName;
             if (tempFH.isOpen())
             {
                 ofh.open();
             }
             
-            RID rid = (RID) ClientFS.ReadInput.readObject();
+            RID rid = (RID) masterInput.readObject();
             rec.setRID(rid);
             
-            outcome = ClientFS.ReadInput.readUTF();
+            outcome = masterInput.readUTF();
             
         }
         catch (Exception e)
@@ -171,21 +197,21 @@ public class ClientRec {
         
         try
         {
-            ClientFS.WriteOutput.writeInt(READ_LAST_RECORD);
-            ClientFS.WriteOutput.writeObject(ofh);
-            ClientFS.WriteOutput.flush();
+            masteroutput.writeInt(READ_LAST_RECORD);
+            masteroutput.writeObject(ofh);
+            masteroutput.flush();
             
-            FileHandle fh = (FileHandle) ClientFS.ReadInput.readObject();
+            FileHandle fh = (FileHandle) masterInput.readObject();
             ofh.setFileName = fh.getFileName;
             if (fh.isOpen())
             {
                 ofh.open();
             }
             
-            RID rid = (RID) ClientFS.ReadInput.readObject();
+            RID rid = (RID) masterInput.readObject();
             rec.setRID(rid);
             
-            outcome = ClientFS.ReadInput.readUTF();
+            outcome = masterInput.readUTF();
             
         }
         catch (Exception e)
