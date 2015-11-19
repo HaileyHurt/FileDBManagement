@@ -680,7 +680,61 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 		}
 		
 		private void deleteRecord() {
-			
+			long handle = Client.ReadLongFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), clientReadStream);
+			int recIndex = Client.ReadIntFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), clientReadStream);
+			ChunkInfo chunk = chunkMap.get(Long.toString(handle));
+			try {
+				if(chunk == null) {
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;
+				}
+				
+				RandomAccessFile file = fileMap.get(chunk.getFilename());
+				if(file == null) {
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;
+				}
+				long endOfChunk = chunk.getPosition() + Constants.ChunkSize;
+				file.seek(chunk.getPosition() + Long.BYTES);
+				//iterate to the right record
+				for(int i = 0; i < recIndex; i++) {
+					int recSize = file.readInt();
+					if(recSize == 0) { //no more records
+						clientWriteStream.writeInt(Constants.FALSE);
+						clientWriteStream.flush();
+						return;
+					}
+					
+					file.seek(file.getFilePointer() + recSize);
+					if(file.getFilePointer() >= endOfChunk) {
+						clientWriteStream.writeInt(Constants.FALSE);
+						clientWriteStream.flush();
+						return;
+					}
+				}
+				long pos = file.getFilePointer(); //position of record size
+				int recSize = file.readInt();
+				if(recSize == 0) { //records ended
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;					
+				}
+				file.seek(file.getFilePointer() + recSize); //seek past end of record
+				int bytesToMove = (int)(endOfChunk - file.getFilePointer());
+				byte[] data = new byte[bytesToMove];
+				file.read(data, 0, bytesToMove);
+				
+				file.seek(pos);
+				file.write(data, 0, bytesToMove);
+				
+				int bytesToZeroOut = (int)(endOfChunk - file.getFilePointer());
+				for(int i = 0; i < bytesToZeroOut; i++) file.writeInt(0);
+				
+			} catch(IOException e) {
+ 				e.printStackTrace();
+			}
 		}
 		
 		@Override
