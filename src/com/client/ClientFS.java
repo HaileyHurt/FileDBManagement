@@ -36,21 +36,18 @@ public class ClientFS {
     
     public ClientFS()
     {
-        client = new Client();
-        
         try
         {
-            if (master == null)
-            {
-                clientSocket = new Socket("localhost", 2345);
+            master = new Master();
+            clientSocket = new Socket("localhost", 2345);
             
-                masterOutput = new ObjectOutputStream(clientSocket.getOutputStream());
-                masterInput = new ObjectInputStream(clientSocket.getInputStream());
-            }
+            masterOutput = new ObjectOutputStream(clientSocket.getOutputStream());
+            masterInput = new ObjectInputStream(clientSocket.getInputStream());
+            client = new Client();
         }
         catch
         {
-            System.out.println("Error creating socket (ClientFS:43)");
+            System.out.println("Error initializing clientfs (ClientFS:43)");
         }
     }
 
@@ -310,7 +307,7 @@ public class ClientFS {
 
 public class Master
 {
-    Map<String, Vector<String>> namespace;
+    1Map<String, Vector<String>> namespace;
     Map<String, Vector<String>> fileChunkMap;
     /**
      * Creates the specified dirname in the src directory Returns

@@ -72,7 +72,8 @@ public class Client implements ClientInterface {
 	/**
 	 * Initialize the client  FileNotFoundException
 	 */
-	public Client(){
+	public Client()
+    {
 		if (ClientSocket != null) return; //The client is already connected
 		try {
 			BufferedReader binput = new BufferedReader(new FileReader(ChunkServer.ClientConfigFile));

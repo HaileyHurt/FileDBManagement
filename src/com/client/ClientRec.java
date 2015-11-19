@@ -1,3 +1,4 @@
+
 package com.client;
 
 import com.client.ClientFS.FSReturnVals;
@@ -42,21 +43,19 @@ public class ClientRec {
     
     public ClientRec()
     {
-        client = new Client();
-        
         try
         {
-            if (master == null)
-            {
-                clientSocket = new Socket("localhost", 2345);
-                
-                masterOutput = new ObjectOutputStream(clientSocket.getOutputStream());
-                masterInput = new ObjectInputStream(clientSocket.getInputStream());
-            }
+            master = new Master();
+            clientSocket = new Socket("localhost", 2345);
+            
+            masterOutput = new ObjectOutputStream(clientSocket.getOutputStream());
+            masterInput = new ObjectInputStream(clientSocket.getInputStream());
+            client = new Client();
         }
+
         catch
         {
-            System.out.println("Error creating socket (ClientFS:43)");
+            System.out.println("Error initializing clientrec (ClientRec:60)");
         }
     }
     
