@@ -238,30 +238,28 @@ public class ClientRec {
         return outcome;
 	}
 
-	/**
-	 * Reads the next record after the specified pivot of the file specified by
-	 * ofh into payload Returns BadHandle if ofh is invalid Returns
-	 * RecDoesNotExist if the file is empty or pivot is invalid
-	 *
-	 * Example usage: 1. ReadFirstRecord(FH1, rec, rec1) 2. ReadNextRecord(FH1,
-	 * rec1, rec, rec2) 3. ReadNextRecord(FH1, rec2, rec, rec3)
-	 */
-	public FSReturnVals ReadNextRecord(FileHandle ofh, RID pivot, byte[] payload, RID RecordID)
-    {
-		return null;
-	}
-
-	/**
-	 * Reads the previous record after the specified pivot of the file specified
-	 * by ofh into payload Returns BadHandle if ofh is invalid Returns
-	 * RecDoesNotExist if the file is empty or pivot is invalid
-	 *
-	 * Example usage: 1. ReadLastRecord(FH1, rec, recn) 2. ReadPrevRecord(FH1,
-	 * recn-1, rec, rec2) 3. ReadPrevRecord(FH1, recn-2, rec, rec3)
-	 */
-	public FSReturnVals ReadPrevRecord(FileHandle ofh, RID pivot, byte[] payload, RID RecordID)
-    {
-		return null;
-	}
-
+    /**
+     * Reads the next record after the specified pivot of the file specified by
+     * ofh into payload Returns BadHandle if ofh is invalid Returns
+     * RecDoesNotExist if the file is empty or pivot is invalid
+     *
+     * Example usage: 1. ReadFirstRecord(FH1, tinyRec1) 2. ReadNextRecord(FH1,
+     * rec1, tinyRec2) 3. ReadNextRecord(FH1, rec2, tinyRec3)
+     */
+    public FSReturnVals ReadNextRecord(FileHandle ofh, RID pivot, TinyRec rec){
+        return null;
+    }
+    
+    /**
+     * Reads the previous record after the specified pivot of the file specified
+     * by ofh into payload Returns BadHandle if ofh is invalid Returns
+     * RecDoesNotExist if the file is empty or pivot is invalid
+     *
+     * Example usage: 1. ReadLastRecord(FH1, tinyRec1) 2. ReadPrevRecord(FH1,
+     * recn-1, tinyRec2) 3. ReadPrevRecord(FH1, recn-2, tinyRec3)
+     */
+    public FSReturnVals ReadPrevRecord(FileHandle ofh, RID pivot, TinyRec rec){
+        return null;
+    }
+    
 }
