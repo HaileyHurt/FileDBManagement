@@ -18,10 +18,40 @@ public class ClientFS {
 		Fail //Returned when a method fails
 	}
     public Master master;
+    public ChunkServer chunkserver;
+    public Client client;
+    public Socket clientSocket;
+    public ObjectOutputStream masterOutput;
+    public ObjectInputStream masterInput;
+    
+    public static final int CREATE_DIR = 1;
+    public static final int DELETE_DIR = 2;
+    public static final int RENAME_DIR = 3;
+    public static final int LIST_DIR = 4;
+    public static final int CREATE_FILE = 5;
+    public static final int DELETE_FILE = 6;
+    public static final int OPEN_FILE = 7;
+    public static final int CLOSE_FILE = 8;
+    public static final int REGISTRATION_MESSAGE = 9;
     
     public ClientFS()
     {
-        master = new Master();
+        client = new Client();
+        
+        try
+        {
+            if (master == null)
+            {
+                clientSocket = new Socket("localhost", 2345);
+            
+                masterOutput = new ObjectOutputStream(clientSocket.getOutputStream());
+                masterInput = new ObjectInputStream(clientSocket.getInputStream());
+            }
+        }
+        catch
+        {
+            System.out.println("Error creating socket (ClientFS:43)");
+        }
     }
 
 	/**
@@ -34,7 +64,28 @@ public class ClientFS {
 	 */
 	public FSReturnVals CreateDir(String src, String dirname)
     {
-		return master.CreateDir(src, dirname);
+        try
+        {
+            masterOutput.writeInt(CREATE_DIR);
+            
+            byte[] srcBytes = src.getBytes();
+            masterOutput.writeInt(CREATE_DIR);
+            masterOutput.writeInt(srcBytes.length);
+            masterOutput.write(srcBytes);
+            
+            byte[] dirBytes = dirname.getBytes();
+            masterOutput.writeInt(dirBytes.length);
+            masterOutput.write(dirBytes);
+            
+            masterOutput.flush();
+            
+            return masterInput.readUTF();
+        }
+        catch
+        {
+            System.out.println("Error creating directory (ClientFS:78)");
+        }
+		return FSReturnVals.Fail;
 	}
 
 	/**
@@ -46,7 +97,27 @@ public class ClientFS {
 	 */
 	public FSReturnVals DeleteDir(String src, String dirname)
     {
-		return master.DeleteDir(src, dirname);
+		try
+        {
+            masterOutput.writeInt(DELETE_DIR);
+            
+            byte[] srcBytes = src.getBytes();
+            masterOutput.writeInt(srcBytes.length);
+            masterOutput.write(srcBytes);
+            
+            byte[] dirBytes = dirname.getBytes();
+            masterOutput.writeInt(dirBytes.length);
+            masterOutput.write(dirBytes);
+            
+            masterOutput.flush();
+            
+            return masterInput.readUTF();
+        }
+        catch
+        {
+            System.out.println("Error deleting directory (FlientFS:103)");
+        }
+        return FSReturnVals.Fail;
 	}
 
 	/**
@@ -59,7 +130,27 @@ public class ClientFS {
 	 */
 	public FSReturnVals RenameDir(String src, String NewName)
     {
-		return master.RenameDir(src, NewName);
+		try
+        {
+            masterOutput.writeInt(RENAME_DIR);
+            
+            byte[] srcBytes = src.getBytes();
+            masterOutput.writeInt(srcBytes.length);
+            masterOutput.write(srcBytes);
+            
+            byte[] newBytes = NewName.getBytes();
+            masterOutput.writeInt(newBytes.length);
+            masterOutput.write(newBytes);
+            
+            masterOutput.flush();
+            
+            return masterInput.readUTF();
+        }
+        catch
+        {
+            System.out.println("Error renaming directory (ClientFS:129)");
+        }
+        return FSReturnVals.Fail;
 	}
 
 	/**
@@ -71,7 +162,33 @@ public class ClientFS {
 	 */
 	public String[] ListDir(String tgt)
     {
-		return master.ListDir(tgt);
+        try
+        {
+            masterOutput.writeInt(LIST_DIR);
+            
+            byte[] tgtBytes = tgt.getBytes();
+            masterOutput.writeInt(tgtBytes.length);
+            masterOutput.write(tgtBytes);
+            
+            masterOutput.flush();
+            
+            int dirSize = masterInput.readInt();
+            String[] contents = new String[dirSize];
+            for (int i = 0; i < dirSize; i++)
+            {
+                int sz = masterInput.readInt();
+                String temp = masterInput.read(sz);
+                contents[i] = temp;
+            }
+            return contents;
+        }
+        catch
+        {
+            System.out.println("Error listing directories (ClientFS:151)");
+        }
+        return FSReturnVals.Fail;
+        /*
+         */
 	}
 
 	/**
@@ -83,7 +200,27 @@ public class ClientFS {
 	 */
 	public FSReturnVals CreateFile(String tgtdir, String filename)
     {
-		return master.CreateFile(tgtdir, filename);
+		try
+        {
+            masterOutput.writeInt(CREATE_FILE);
+            
+            byte[] tgtBytes = tgtdir.getBytes();
+            masterOutput.writeInt(tgtBytes.length);
+            masterOutput.write(tgtBytes);
+            
+            byte[] fileBytes = filename.getBytes();
+            masterOutput.writeInt(fileBytes.length);
+            masterOutput.write(fileBytes);
+            
+            masterOutput.flush();
+            
+            return masterOutput.readUTF();
+        }
+        catch
+        {
+            System.out.println("Error creating file (ClientFS:178)");
+        }
+        return FSReturnVals.Fail;
 	}
 
 	/**
@@ -95,7 +232,27 @@ public class ClientFS {
 	 */
 	public FSReturnVals DeleteFile(String tgtdir, String filename)
     {
-		return master.DeleteFile(tgtdir, filename);
+		try
+        {
+            masterOutput.writeInt(DELETE_FILE);
+            
+            byte[] tgtBytes = tgtdir.getBytes();
+            masterOutput.writeInt(tgtBytes.length);
+            masterOutput.write(tgtBytes);
+            
+            byte[] fileBytes = filename.getBytes();
+            masterOutput.writeInt(fileBytes.length);
+            masterOutput.write(fileBytes);
+            
+            masterOutput.flush();
+            
+            return masterOutput.readUTF();
+        }
+        catch
+        {
+            System.out.println("Error creating file (ClientFS:203)");
+        }
+        return FSReturnVals.Fail;
 	}
 
 	/**
@@ -107,7 +264,23 @@ public class ClientFS {
 	 */
 	public FSReturnVals OpenFile(String FilePath, FileHandle ofh)
     {
-		return master.OpenFile(FilePath, ofh);
+		try
+        {
+            masterOutput.writeInt(OPEN_FILE);
+            
+            byte[] fileBytes = FilePath.getBytes();
+            masterOutput.writeInt(tgtBytes.length);
+            masterOutput.write(tgtBytes);
+            
+            masterOutput.flush();
+            
+            return masterOutput.readUTF();
+        }
+        catch
+        {
+            System.out.println("Error opening file (ClientFS:228)");
+        }
+        return FSReturnVals.Fail;
 	}
 
 	/**
@@ -117,7 +290,19 @@ public class ClientFS {
 	 */
 	public FSReturnVals CloseFile(FileHandle ofh)
     {
-		return master.CloseFile(ofh);
+		try
+        {
+            masterOutput.writeInt(CLOSE_FILE);
+            masterOutput.writeObject(ofh);
+            masterOutput.flush();
+            
+            return masterOutput.readUTF();
+        }
+        catch
+        {
+            System.out.println("Error opening file (ClientFS:228)");
+        }
+        return FSReturnVals.Fail;
 	}
 
 }

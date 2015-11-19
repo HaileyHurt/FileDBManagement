@@ -7,6 +7,7 @@ public class FileHandle
 {
     String fileName;
     Map<String, Vector<String>> chunkToServerMap;
+    
     boolean opened;
     
     public FileHandle()
@@ -50,6 +51,16 @@ public class FileHandle
     public Map<String, Vector<String>> getChunkToServerMap()
     {
         return chunkToServerMap;
+    }
+    
+    public void setChunkToServerMap(Map<String, Vector<String>> map)
+    {
+        chunkToServerMap = map;
+    }
+    
+    public Vector<String> getIPsForChunk(String ch)
+    {
+        return chunkToServerMap.get(ch);
     }
     
     public boolean isOpen()
