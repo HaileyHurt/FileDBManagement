@@ -58,7 +58,14 @@ public class ClientRec {
             System.out.println("Error initializing clientrec (ClientRec:60)");
         }
     }
-    
+    /**
+     * Appends a record to the open file as specified by ofh Returns BadHandle
+     * if ofh is invalid Returns BadRecID if the specified RID is not null
+     * Returns RecordTooLong if the size of payload exceeds chunksize RID is
+     * null if AppendRecord fails
+     *
+     * Example usage: AppendRecord(FH1, obama, RecID1)
+     */
 	public FSReturnVals AppendRecord(FileHandle ofh, byte[] payload, RID RecordID)
     {
         FSReturnVals outcome;
