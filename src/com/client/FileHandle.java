@@ -32,6 +32,12 @@ public class FileHandle
         return fileName;
     }
     
+    public Vector<String> getServersForChunk(String ch)
+    {
+        Vector<String> vec = chunkToServerMap.get(ch);
+        return vec;
+    }
+    
     public void addChunk(String ch, Vector<String> locs)
     {
         chunkHandles.put(ch);
