@@ -48,6 +48,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 	String localhostIP;
 	String masterIP;
 	int masterPort;
+	int serverPort;
 	
 	Socket masterSocket;
 	ObjectOutputStream masterWriteStream;
@@ -254,17 +255,15 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 			for(int i = 0; i < chunkHandles.size(); i++) {
 				masterWriteStream.writeLong(Long.parseLong(chunkHandles.get(i)));
 			}
+			
+			masterWriteStream.writeInt(serverPort);
+			
 			masterWriteStream.flush();
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 		masterWriteLock.unlock();
-	}
-	
-	public void sendLease(long chunkhandle) {
-		//asdf
-		
 	}
 
 	@Override
@@ -304,6 +303,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 		try {
 			RandomAccessFile config = new RandomAccessFile(new File("config"), "r");	
 			masterIP = config.readLine();
+			config.readLine(); //discard line
 			masterPort = config.readInt();
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
@@ -322,8 +322,18 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 			e.printStackTrace();
 		}
 		
+		serverPort = 0;
+		ServerSocket clientServerSocket = null;
+		try {
+			clientServerSocket = new ServerSocket(serverPort);
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		serverPort = clientServerSocket.getLocalPort();
+		
 		//start client listener to listen for clients
-		clientListener = new ClientListener();
+		clientListener = new ClientListener(clientServerSocket);
 		clientListener.start();
 		
 		//send heartbeats
@@ -381,24 +391,29 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 	
 	public class ClientListener extends Thread {
 		//TODO check if client threads need to be kept in a vector
+		private ServerSocket clientServerSocket;
+		
+		public ClientListener(ServerSocket ss) {
+			clientServerSocket = ss;
+		}
+		
 		@Override
 		public void run() {
-			int ServerPort = 0;
-			
-			try {
-				clientServerSocket = new ServerSocket(ServerPort);
-				ServerPort = clientServerSocket.getLocalPort();
-			} catch(IOException e) {
-				System.out.println("Error, failed to open a new socket to listen on.");
-				e.printStackTrace();			
-			}
-			
 			while(true) {
 				//accept client connections and start new client thread
 				try {
 					Socket newClientSocket = clientServerSocket.accept();
-					ClientThread clientThread = new ClientThread(newClientSocket);
-					clientThread.start();
+					ObjectOutputStream out = new ObjectOutputStream(newClientSocket.getOutputStream());
+					ObjectInputStream in = new ObjectInputStream(newClientSocket.getInputStream());
+					int type = Client.ReadIntFromInputStream("ClientListener", in);
+					if(type == Constants.IsClient) {
+						ClientThread clientThread = new ClientThread(newClientSocket, out, in);
+						clientThread.start();
+					}
+					else if(type == Constants.IsChunkServer) {
+						ChunkServerThread csThread = new ChunkServerThread(newClientSocket, out, in);
+						csThread.start();
+					}
 				} catch (IOException e) {
 					System.out.println("Error, failed to open client socket to listen on.");
 					e.printStackTrace();	
@@ -412,20 +427,14 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 		ObjectOutputStream clientWriteStream;
 		ObjectInputStream clientReadStream;
 		
-		public ClientThread(Socket socket) {
+		public ClientThread(Socket socket, ObjectOutputStream out, ObjectInputStream in) {
 			this.socket = socket;
+			clientWriteStream = out;
+			clientReadStream = in;
 		}
 		
 		@Override
 		public void run() {
-			try {
-				clientWriteStream = new ObjectOutputStream(socket.getOutputStream());
-				clientReadStream = new ObjectInputStream(socket.getInputStream());
-			} catch (IOException e) {
-				System.out.println("Error, failed to create object I/O stream for client " + 
-									socket.getInetAddress());
-				e.printStackTrace();
-			}
 			
 			while(true) {
 				//process client requests
@@ -470,6 +479,23 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 					
 				}
 			}
+		}
+	}
+	
+	public class ChunkServerThread extends Thread {
+		private Socket socket;
+		private ObjectOutputStream csWriteStream;
+		private ObjectInputStream csReadStream;
+		
+		public ChunkServerThread(Socket socket, ObjectOutputStream out, ObjectInputStream in) {
+			this.socket = socket;
+			csWriteStream = out;
+			csReadStream = in;
+		}
+		
+		@Override
+		public void run() {
+			
 		}
 	}
 	
