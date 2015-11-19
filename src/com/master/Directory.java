@@ -2,6 +2,8 @@ package com.master;
 
 import java.util.ArrayList;
 
+import com.client.ClientFS.FSReturnVals;
+
 public class Directory {
 	
 	private ArrayList<Directory> dir;
@@ -37,18 +39,28 @@ public class Directory {
 		}		
 	}
 	
-	public synchronized void createDir (String dirname){
+	public synchronized boolean createDir (String dirname){
 		Directory d = new Directory(dirname);
-		this.dir.add(d);
-	}
-	
-	public synchronized void deleteDir (String dirname){
+		
 		for (int i = 0; i < dir.size(); i++){
-			if (dir.get(i).getDirectoryName() == dirname){
-				dir.remove(i);
-				break;
+			if (dir.get(i).getDirectoryName().equals(dirname)){
+				return false; // FSReturnVals.DirExists;
 			}
 		}
+		
+		this.dir.add(d);
+		return true; // FSReturnVals.Success;
+	}
+	
+	public synchronized boolean deleteDir (String dirname){
+		for (int i = 0; i < dir.size(); i++){
+			if (dir.get(i).getDirectoryName().equals(dirname)){
+				dir.remove(i);
+				return true; // FSReturnVals.Success;
+			}
+		}
+		
+		return false; // FSReturnVals.Fail;
 	}
 	
 	public synchronized String[] listDir (){
@@ -64,18 +76,27 @@ public class Directory {
 		return this.dirName;
 	}
 	
-	public synchronized void createFile(String filename){
-		TinyFSFile tfsFile = new TinyFSFile();
-		files.add(tfsFile);
-	}
-	
-	public synchronized void deleteFile(String filename){
+	public synchronized boolean createFile(String filename){
+		TinyFSFile tfsFile = new TinyFSFile(filename);
 		for (int i = 0; i < files.size(); i++){
-			if (files.get(i).getFilename() == filename){
-				files.remove(i);
-				break;
+			if (files.get(i).getFilename().equals(filename)){
+				return false;
 			}
 		}
+		
+		files.add(tfsFile);
+		return true;
+	}
+	
+	public synchronized boolean deleteFile(String filename){
+		for (int i = 0; i < files.size(); i++){
+			if (files.get(i).getFilename().equals(filename)){
+				files.remove(i);
+				return true;
+			}
+		}
+		
+		return false;
 	}
 	
 	public synchronized String[] openFile(String filename){

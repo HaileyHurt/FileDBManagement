@@ -7,6 +7,8 @@ import java.util.ArrayList;
 
 import com.client.Client;
 
+import utilities.Constants;
+
 public class ServerThreadCom implements Runnable {
 	private Socket ServerConnection;
 	private DirectoryManager dirManager;
@@ -26,7 +28,7 @@ public class ServerThreadCom implements Runnable {
 				System.out.println ("Operation: " + operation);
 				
 				switch (operation){
-					case Master.HEART_BEAT_MESSAGE:
+					case Constants.REGISTRATION_MESSAGE:
 					
 					case -1:
 					default:

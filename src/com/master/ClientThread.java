@@ -11,6 +11,8 @@ import java.net.Socket;
 
 import com.client.Client;
 
+import utilities.Constants;
+
 public class ClientThread implements Runnable {
 	private DirectoryManager dirManager;
 	private int port;
@@ -36,14 +38,14 @@ public class ClientThread implements Runnable {
 			int portToClients = 0;
 			commChanel = new ServerSocket(portToClients);
 			portToClients = commChanel.getLocalPort();
-			PrintWriter outWrite = new PrintWriter(new FileOutputStream(Master.configFile));
+			PrintWriter outWrite = new PrintWriter(new FileOutputStream(Constants.ConfigFile));
 			System.out.println("Waiting for clients on the port:" + portToClients);
 			outWrite.println(InetAddress.getLocalHost().getHostAddress());
 			outWrite.println(portToClients);
 			outWrite.close();
 			this.port = portToClients;
-		
-		} catch (IOException ex) {
+		}
+		catch (IOException ex) {
 			System.out.println("Error, failed to open a new socket to listen on.");
 			ex.printStackTrace();
 		}

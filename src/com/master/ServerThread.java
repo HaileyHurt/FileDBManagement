@@ -14,6 +14,8 @@ import java.util.ArrayList;
 
 import com.client.Client;
 
+import utilities.Constants;
+
 public class ServerThread implements Runnable {
 	private int port;
 	private DirectoryManager dirManager;
@@ -41,7 +43,7 @@ public class ServerThread implements Runnable {
 			commChanel = new ServerSocket(portToServers);
 			portToServers = commChanel.getLocalPort();
 			
-			PrintWriter outWrite = new PrintWriter(new BufferedWriter(new FileWriter(Master.configFile, true)));
+			PrintWriter outWrite = new PrintWriter(new BufferedWriter(new FileWriter(Constants.ConfigFile, true)));
 			outWrite.println(portToServers);
 			outWrite.close();
 						

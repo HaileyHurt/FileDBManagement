@@ -3,6 +3,8 @@ package com.master;
 import java.util.ArrayList;
 import java.util.Map;
 
+import com.client.ClientFS.FSReturnVals;
+
 public class DirectoryManager {
 	private static long chunkHandle;
 	private Directory root;
@@ -18,22 +20,21 @@ public class DirectoryManager {
 	public boolean createDir(String src, String dirname) {
 		Directory target = getDirectory(src);
 		if (target != null){
-			target.createDir(dirname);
-			return true;
+			System.out.println("Source found!");
+			return target.createDir(dirname);
 		}
 		
-		return false;
+		return false; // FSReturnVals.SrcDirNotExistent;
 	}
 	
 	public boolean deleteDir(String src, String dirname) {
 		Directory target = getDirectory(src);
-		
+		System.out.println ("SRC: " + src + " Dirname: " + dirname);
 		if (target != null){
-			target.deleteDir(dirname);
-			return true;
+			return target.deleteDir(dirname);
 		}
 		
-		return false;
+		return false; // FSReturnVals.SrcDirNotExistent;
 	}
 	
 	public boolean renameDir(String src, String dirname) {
@@ -61,8 +62,7 @@ public class DirectoryManager {
 		Directory target = getDirectory(src);
 		
 		if (target != null){
-			target.createFile(filename);
-			return true;
+			return target.createFile(filename);
 		}
 		
 		return false;
@@ -72,8 +72,7 @@ public class DirectoryManager {
 		Directory target = getDirectory(src);
 		
 		if (target != null){
-			target.deleteFile(filename);
-			return true;
+			return target.deleteFile(filename);
 		}
 		
 		return false;

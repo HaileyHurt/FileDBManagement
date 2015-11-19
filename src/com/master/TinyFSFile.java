@@ -7,11 +7,18 @@ public class TinyFSFile {
 	private String filename;
 	private ArrayList<String> chunks;
 	
-	public TinyFSFile(String []chunkList){
+	public TinyFSFile(String []chunkList, String filename){
 		chunks = new ArrayList <String>();
 		for (int i = 0; i < chunkList.length; i++){
 			chunks.add(chunkList[i]);
 		}
+		
+		this.filename = filename;
+	}
+	
+	public TinyFSFile(String filename){
+		chunks = new ArrayList <String>();
+		this.filename = filename;
 	}
 	
 	public TinyFSFile(){

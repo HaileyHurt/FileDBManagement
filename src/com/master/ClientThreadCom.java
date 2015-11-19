@@ -1,10 +1,14 @@
 package com.master;
 
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 
 import com.client.Client;
+import com.client.ClientFS.FSReturnVals;
+
+import utilities.Constants;
 
 public class ClientThreadCom implements Runnable {
 	private DirectoryManager dirManager;
@@ -23,22 +27,13 @@ public class ClientThreadCom implements Runnable {
 			while (!ClientConnection.isClosed()){
 				int operation = Client.ReadIntFromInputStream("ClientThreadCom", ReadInput);
 				switch (operation){
-					case Master.CREATE_DIR:
-						int srcSize = Client.ReadIntFromInputStream("ClientThreadCom", ReadInput);
-						byte[] filePath = Client.RecvPayload("ClientThreadCom", ReadInput, srcSize);
-						String strFilePath = new String (filePath);
-						int dirSize = Client.ReadIntFromInputStream("ClientThreadCom", ReadInput);
-						byte[] dirName = Client.RecvPayload("ClientThreadCom", ReadInput, dirSize);
-						String strDirName = new String (dirName);
-						
-						boolean result = dirManager.createDir(strFilePath, strDirName);
-						int resultInt = 0;
-						if (result){
-							resultInt = 1;
-						}
-						
-						WriteOutput.writeInt(resultInt);
-						WriteOutput.flush();
+					case Constants.CREATE_DIR:
+						createDirProcedure(WriteOutput, ReadInput);
+						ClientConnection.close();
+						break;
+					case Constants.DELETE_DIR:
+						System.out.println("Deleting something..");
+						deleteDirProcedure(WriteOutput, ReadInput);
 						ClientConnection.close();
 						break;
 					case -1:
@@ -49,6 +44,9 @@ public class ClientThreadCom implements Runnable {
 						ClientConnection.close();						
 						break;
 				}
+				
+				dirManager.print();
+				System.out.println("\n\n");
 			}
 			
 			ReadInput.close();
@@ -59,5 +57,47 @@ public class ClientThreadCom implements Runnable {
 			e.printStackTrace();
 		}
 	 }
+	 
+	 public void createDirProcedure(ObjectOutputStream WriteOutput, ObjectInputStream ReadInput) throws IOException{
+		int srcSize = Client.ReadIntFromInputStream("ClientThreadCom", ReadInput);
+		byte[] srcPath = Client.RecvPayload("ClientThreadCom", ReadInput, srcSize);
+		
+		String strFilePath = new String (srcPath);
+		int dirSize = Client.ReadIntFromInputStream("ClientThreadCom", ReadInput);
+		byte[] dirName = Client.RecvPayload("ClientThreadCom", ReadInput, dirSize);
+		String strDirName = new String (dirName);
+		
+		boolean result = dirManager.createDir(strFilePath, strDirName);
+		
+		if (result == true){
+			WriteOutput.writeInt(1);
+		}
+		else {
+			WriteOutput.writeInt(0);
+		}
+		
+		WriteOutput.flush();
+	 }
 
+	 public void deleteDirProcedure(ObjectOutputStream WriteOutput, ObjectInputStream ReadInput) throws IOException{
+		int srcSize = Client.ReadIntFromInputStream("ClientThreadCom", ReadInput);
+		byte[] srcPath = Client.RecvPayload("ClientThreadCom", ReadInput, srcSize);
+		
+		String strPath = new String (srcPath);
+		
+		int dirSize = Client.ReadIntFromInputStream("ClientThreadCom", ReadInput);
+		byte[] dirName = Client.RecvPayload("ClientThreadCom", ReadInput, dirSize);
+		String strDirName = new String (dirName);
+		
+		boolean result = dirManager.deleteDir(strPath, strDirName);
+		
+		if (result == true){
+			WriteOutput.writeInt(1);
+		}
+		else {
+			WriteOutput.writeInt(0);
+		}
+		
+		WriteOutput.flush();
+	 }
 }
