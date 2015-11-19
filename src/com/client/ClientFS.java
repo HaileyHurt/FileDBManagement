@@ -62,9 +62,7 @@ public class ClientFS {
 	public FSReturnVals CreateDir(String src, String dirname)
     {
         try
-        {
-            masterOutput.writeInt(CREATE_DIR);
-            
+        {            
             byte[] srcBytes = src.getBytes();
             masterOutput.writeInt(CREATE_DIR);
             masterOutput.writeInt(srcBytes.length);
