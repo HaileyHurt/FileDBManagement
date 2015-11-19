@@ -44,6 +44,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 	Vector<String> chunkHandles;
 	Vector<String> ownedLeases;
 	String[] filenames;
+	HashMap<String, byte[]> appendMap;
 	
 	String localhostIP;
 	String masterIP;
@@ -271,6 +272,9 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 		//read in file and chunk meta-data
 		fileMap = new HashMap<String, RandomAccessFile>();
 		chunkMap = new HashMap<String, ChunkInfo>();
+		chunkHandles = new Vector<String>();
+		ownedLeases = new Vector<String>();
+		appendMap = new HashMap<String, byte[]>();
 		
 		File dir = new File(Constants.filePath);
 		filenames = dir.list();
@@ -462,6 +466,8 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 		Socket socket;
 		ObjectOutputStream clientWriteStream;
 		ObjectInputStream clientReadStream;
+		
+		Vector<Boolean> secondaryResults = new Vector<Boolean>();
 		
 		public ClientThread(Socket socket, ObjectOutputStream out, ObjectInputStream in) {
 			this.socket = socket;
@@ -675,8 +681,152 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 			}					
 		}
 		
+		//this method called to store data that client wants to append
+		private void addDataToWrite() {
+			long handle = Client.ReadLongFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), clientReadStream);
+			try {
+				if(chunkMap.get(Long.toString(handle)) == null) {
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;
+				}
+				int recIndex = Client.ReadIntFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), clientReadStream);
+				int recSize = Client.ReadIntFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), clientReadStream);
+				byte[] data = new byte[recSize];
+				clientReadStream.read(data, 0, recSize);
+				String key = Long.toString(handle) + ":" + Integer.toString(recIndex) + ":" + socket.getInetAddress().toString();
+				appendMap.put(key, data);
+				clientWriteStream.writeInt(Constants.TRUE);
+				clientWriteStream.flush();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
 		private void appendRecord() {
-			
+			long handle = Client.ReadLongFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), clientReadStream);
+			int recIndex = Client.ReadIntFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), clientReadStream);
+			int numChunkservers = Client.ReadIntFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), clientReadStream);
+			//get the data that was received earlier
+			String key = Long.toString(handle) + ":" + Integer.toString(recIndex) + ":" + socket.getInetAddress().toString();
+			byte[] data = appendMap.get(key);
+			ChunkInfo chunk = chunkMap.get(Long.toString(handle));
+			try {
+				if(chunk == null || data == null || !chunk.hasLease()) {
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;
+				}
+				//if 50 seconds have passed, renew the lease
+				if(System.currentTimeMillis() - chunk.getLeaseGivenTime() > 50000) {
+					sendHeartBeat(true, Long.toString(handle));
+					int response = masterReadStream.readInt();
+					if(response != Constants.TRUE) {
+						//did not get the lease, return fail
+						clientWriteStream.writeInt(Constants.FALSE);
+						clientWriteStream.flush();
+						return;						
+					}
+				}
+				//record IPs and ports of replicas
+				String [] IPs = new String[numChunkservers];
+				int [] ports = new int[numChunkservers];
+				for(int i = 0; i < numChunkservers; i++) {
+					int strlen = Client.ReadIntFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), clientReadStream);
+					byte[] buf = new byte[strlen];
+					clientReadStream.read(buf, 0, strlen);
+					String IP = Arrays.toString(buf);
+					int port = Client.ReadIntFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), clientReadStream);
+					IPs[i] = IP;
+					ports[i] = port;
+				}
+				//as the primary, write the data first
+				RandomAccessFile file = fileMap.get(chunk.getFilename());
+				long endOfChunk = chunk.getPosition() + Constants.ChunkSize;
+				file.seek(chunk.getPosition() + Long.BYTES); //seek to start of data
+				//iterate to the right index
+				for(int i = 0; i < recIndex; i++) {
+					int recSize = file.readInt();
+					if(recSize == 0) { //records ended
+						clientWriteStream.writeInt(Constants.FALSE);
+						clientWriteStream.flush();
+						return;					
+					}
+					
+					file.seek(file.getFilePointer()+recSize);
+					if(file.getFilePointer() >= endOfChunk) { //reached end of chunk
+						clientWriteStream.writeInt(Constants.FALSE);
+						clientWriteStream.flush();
+						return;		
+					}
+				}
+				int recSize = file.readInt();
+				//check that data size is not bigger than remaining space
+				if(recSize != 0 || (data.length > endOfChunk - file.getFilePointer())) {
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;
+				}
+				file.seek(file.getFilePointer() - Integer.BYTES);
+				file.writeInt(recSize); //write size of record
+				file.write(data, 0, recSize);
+				
+				for(int i = 0; i < numChunkservers; i++) {
+					if(IPs[i] == localhostIP) continue;
+					Socket csSocket = new Socket(IPs[i], ports[i]);
+					(new Thread() {
+						@Override
+						public void run() {
+							try {
+								ObjectOutputStream out = new ObjectOutputStream(csSocket.getOutputStream());
+								ObjectInputStream in = new ObjectInputStream(csSocket.getInputStream());
+								out.writeInt(Constants.IsChunkServer);
+								out.writeInt(Constants.APPEND_RECORD);
+								out.writeLong(handle);
+								out.writeInt(recIndex);
+								out.writeInt(socket.getInetAddress().toString().length());
+								out.write(Byte.valueOf(socket.getInetAddress().toString()));
+								
+								int response = in.readInt();
+								if(response == Constants.TRUE) {
+									secondaryResults.add(true);
+								}
+								else {
+									secondaryResults.add(false);
+								}
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+						}
+					}).start();
+				}
+				
+				while(true) { //check for responses
+					if(secondaryResults.size() == numChunkservers-1) {
+						for(int i = 0; i < numChunkservers; i++) {
+							if(!secondaryResults.get(i)) {
+								//failure
+								clientWriteStream.writeInt(Constants.FALSE);
+								clientWriteStream.flush();
+								return;
+								
+							}
+						}
+						//success
+						clientWriteStream.writeInt(Constants.TRUE);
+						clientWriteStream.flush();
+						return;
+					}
+					try {
+						Thread.sleep(100);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 		
 		private void deleteRecord() {
@@ -762,8 +912,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 						readPrevRecord();
 						break;					
 					case Constants.DATA_TO_WRITE:
-						clientWriteStream.writeInt(Constants.TRUE);
-						clientWriteStream.flush();
+						addDataToWrite();
 						break;
 					case Constants.APPEND_RECORD:
 						appendRecord();
@@ -784,6 +933,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 		}
 	}
 	
+	/* for receiving messages from another chunkserver */
 	public class ChunkServerThread extends Thread {
 		private Socket socket;
 		private ObjectOutputStream csWriteStream;
@@ -795,9 +945,73 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 			csReadStream = in;
 		}
 		
+		private void secondaryAppend() {
+			long handle = Client.ReadLongFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), csReadStream);
+			int recIndex = Client.ReadIntFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), csReadStream);
+			int strlen = Client.ReadIntFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), csReadStream);
+			byte [] buf = new byte[strlen];
+			String IP = Arrays.toString(buf);
+			String key = Long.toString(handle) + ":" + Integer.toString(recIndex) + ":" + IP;
+			byte[] data = appendMap.get(key);
+			ChunkInfo chunk = chunkMap.get(Long.toString(handle));
+			try {
+				if(chunk == null || data == null) {
+					csWriteStream.writeInt(Constants.FALSE);
+					csWriteStream.flush();
+					return;
+				}
+				//write the data
+				RandomAccessFile file = fileMap.get(chunk.getFilename());
+				long endOfChunk = chunk.getPosition() + Constants.ChunkSize;
+				file.seek(chunk.getPosition() + Long.BYTES); //seek to start of data
+				//iterate to the right index
+				for(int i = 0; i < recIndex; i++) {
+					int recSize = file.readInt();
+					if(recSize == 0) { //records ended
+						csWriteStream.writeInt(Constants.FALSE);
+						csWriteStream.flush();
+						return;					
+					}
+					
+					file.seek(file.getFilePointer()+recSize);
+					if(file.getFilePointer() >= endOfChunk) { //reached end of chunk
+						csWriteStream.writeInt(Constants.FALSE);
+						csWriteStream.flush();
+						return;		
+					}
+				}
+				int recSize = file.readInt();
+				//check that data size is not bigger than remaining space
+				if(recSize != 0 || (data.length > endOfChunk - file.getFilePointer())) {
+					csWriteStream.writeInt(Constants.FALSE);
+					csWriteStream.flush();
+					return;
+				}
+				file.seek(file.getFilePointer() - Integer.BYTES);
+				file.writeInt(recSize); //write size of record
+				file.write(data, 0, recSize);
+				
+				csWriteStream.writeInt(Constants.TRUE);
+				csWriteStream.flush();
+			} catch(IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
 		@Override
 		public void run() {
-			
+			try {
+				int CMD = csReadStream.readInt();
+				switch(CMD) {
+				case Constants.APPEND_RECORD:
+					secondaryAppend();
+					break;
+				default:
+					break;
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 	
