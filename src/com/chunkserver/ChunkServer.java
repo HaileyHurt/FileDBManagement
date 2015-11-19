@@ -727,6 +727,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 						clientWriteStream.flush();
 						return;						
 					}
+					chunk.setLease(true, chunk.getLeaseGivenTime()+60000); //extend lease time 60 seconds
 				}
 				//record IPs and ports of replicas
 				String [] IPs = new String[numChunkservers];
@@ -801,10 +802,11 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 					}).start();
 				}
 				
-				while(true) { //check for responses
+				int time = 0;
+				while(true) { //check for responses, timeout after 10 seconds
 					if(secondaryResults.size() == numChunkservers-1) {
 						for(int i = 0; i < numChunkservers; i++) {
-							if(!secondaryResults.get(i)) {
+							if(!secondaryResults.get(i) || time == 10000) {
 								//failure
 								clientWriteStream.writeInt(Constants.FALSE);
 								clientWriteStream.flush();
@@ -819,6 +821,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 					}
 					try {
 						Thread.sleep(100);
+						time += 100;
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
