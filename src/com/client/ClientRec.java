@@ -59,6 +59,54 @@ public class ClientRec {
             System.out.println("Error initializing clientrec (ClientRec:60)");
         }
     }
+    
+    public FSReturnVals intToFSReturnVal(int i)
+    {
+        switch (i)
+        {
+            case 0:
+                return DirExists;
+                break;
+            case 1:
+                return DirNotEmpty;
+                break;
+            case 2:
+                return SrcDirNotExistent;
+                break;
+            case 3:
+                return DestDirExists;
+                break;
+            case 4:
+                return FileExists;
+                break;
+            case 5:
+                return FileDoesNotExist;
+                break;
+            case 6:
+                return BadHandle;
+                break;
+            case 7:
+                return RecordTooLong;
+                break;
+            case 8:
+                return BadRecID;
+                break;
+            case 9:
+                return RecDoesNotExist;
+                break;
+            case 10:
+                return NotImplemented;
+                break;
+            case 11:
+                return Success;
+                break;
+            case 12:
+                return Fail;
+                break;
+                
+                
+        }
+    }
     /**
      * Appends a record to the open file as specified by ofh Returns BadHandle
      * if ofh is invalid Returns BadRecID if the specified RID is not null
@@ -89,11 +137,12 @@ public class ClientRec {
             RecordID.byteoffset = rid.byteoffset;
             RecordID.size = rid.size;
             
-            outcome = masterInput.readUTF();
-            
+            int i = masterInput.readInt();
+            outcome = intToFSReturnVal(i)
         }
         catch (Exception e)
         {
+            outcome = FSReturnVals.Fail;
             System.out.println("Unable to append records (ClientREC:65)");
         }
         
@@ -135,11 +184,12 @@ public class ClientRec {
             RecordID.setOffset() = rid.getOffset();
             RecordID.setRecordSize() = rid.getRecordSize();
             
-            outcome = masterInput.readUTF();
-            
+            int i = masterInput.readInt();
+            outcome = intToFSReturnVal(i);
         }
         catch (Exception e)
         {
+            outcome = FSReturnVals.Fail;
             System.out.println("Unable to delete record (ClientRED:115)");
         }
         
@@ -172,11 +222,12 @@ public class ClientRec {
             RID rid = (RID) masterInput.readObject();
             rec.setRID(rid);
             
-            outcome = masterInput.readUTF();
-            
+            int i = masterInput.readInt();
+            outcome = intToFSReturnVal(i);
         }
         catch (Exception e)
         {
+            outcome = FSReturnVals.Fail;
             System.out.println("Unable to read first record (ClientREC:150)");
         }
         
@@ -200,7 +251,7 @@ public class ClientRec {
 	 */
 	public FSReturnVals ReadLastRecord(FileHandle ofh, byte[] payload, RID RecordID)
     {
-        FSReturnVals outcome = null;
+        FSReturnVals outcome;
         
         try
         {
@@ -218,11 +269,12 @@ public class ClientRec {
             RID rid = (RID) masterInput.readObject();
             rec.setRID(rid);
             
-            outcome = masterInput.readUTF();
-            
+            int i = masterInput.readInt();
+            outcome = intToFSReturnVal(i);
         }
         catch (Exception e)
         {
+            outcome = FSReturnVals.Fail;
             System.out.println("Unable to read last record (ClientREC:194)");
         }
         
