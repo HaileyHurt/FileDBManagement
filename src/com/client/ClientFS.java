@@ -24,15 +24,21 @@ public class ClientFS {
     public ObjectOutputStream masterOutput;
     public ObjectInputStream masterInput;
     
-    public static final int CREATE_DIR = 1;
-    public static final int DELETE_DIR = 2;
-    public static final int RENAME_DIR = 3;
-    public static final int LIST_DIR = 4;
-    public static final int CREATE_FILE = 5;
-    public static final int DELETE_FILE = 6;
-    public static final int OPEN_FILE = 7;
-    public static final int CLOSE_FILE = 8;
-    public static final int REGISTRATION_MESSAGE = 9;
+    public static final int CREATE_DIR = 14;
+    public static final int DELETE_DIR = 15;
+    public static final int RENAME_DIR = 16;
+    public static final int LIST_DIR = 17;
+    public static final int CREATE_FILE = 18;
+    public static final int DELETE_FILE = 19;
+    public static final int OPEN_FILE = 20;
+    public static final int CLOSE_FILE = 21;
+    public static final int REGISTRATION_MESSAGE = 22;
+    public static final int APPEND_RECORD = 23;
+    public static final int DELETE_RECORD = 24;
+    public static final int READ_FIRST_RECORD = 25;
+    public static final int READ_LAST_RECORD = 26;
+    public static final int READ_NEXT_RECORD = 27;
+    public static final int READ_PREV_RECORD = 28;
     
     public ClientFS()
     {
