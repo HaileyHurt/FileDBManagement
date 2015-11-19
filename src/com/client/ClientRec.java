@@ -115,30 +115,38 @@ public class ClientRec {
      *
      * Example usage: AppendRecord(FH1, obama, RecID1)
      */
-	public FSReturnVals AppendRecord(FileHandle ofh, byte[] payload, RID RecordID)
+    public FSReturnVals AppendRecord(FileHandle ofh, byte[] payload, RID RecordID)
     {
         FSReturnVals outcome;
+        IP ip; 
+        // set ip address, port number
         try
-        {
-            masteroutput.writeInt(APPEND_RECORD);
-            masteroutput.writeObject(ofh);
-            masteroutput.flush();
-            masteroutput.writeObject(RecordID);
-            masteroutput.flush();
-            masteroutput.writeInt(payload.length);
-            masteroutput.flush();
-            
-            
-            FileHandle fh = (FileHandle) masterInput.readObject();
-            ofh.getFileName = fh.getFileName;
-            
-            RID rid = (RID) masterInput.readObject();
+        {   
+            RID rid = (RID) masterInput.readObject(); 
             RecordID.chunkhandle = rid.chunkhandle;
             RecordID.byteoffset = rid.byteoffset;
             RecordID.size = rid.size;
             
+            masterOutput.writeInt(Constants.APPEND_RECORD); 
+            masterOutput.writeInt(rid.chunkhandle.length);
+            masterOutput.writeInt(rid.chunkhandle);
+            masterOutput.flush(); 
+            masterOutput.writeInt(rid.index); 
+            // send number of chunkservers with the chunk on it 
+            masterOutput.writeInt(ip.getAddress()); 
+            masterOutput.flush(); 
+            masterOutput.writeInt(ip.getPort()); 
+            masterOutput.flush(); 
+            
+            FileHandle fh = (FileHandle) masterInput.readObject();
+            ofh.getFileName = fh.getFileName;
+            
             int i = masterInput.readInt();
             outcome = intToFSReturnVal(i)
+        
+            int i = masterInput.readInt();
+            outcome = intToFSReturnVal(i)
+
         }
         catch (Exception e)
         {
@@ -146,12 +154,17 @@ public class ClientRec {
             System.out.println("Unable to append records (ClientREC:65)");
         }
         
-        if (outcome == FSReturnVals.Success)
+        if(outcome == Constants.TRUE)
         {
             ClientFS.client.writeChunk(RecordID.chunkhandle, payload, RecordID.byteoffset);
         }
+        else if(outcome == Constants.FALSE)
+        {
+            masterOutput.writeInt(Constants.DataToWrite);
+        }
+        
         return outcome;
-	}
+    }
 
 	/**
 	 * Deletes the specified record by RecordID from the open file specified by
