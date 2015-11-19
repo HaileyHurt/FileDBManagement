@@ -16,7 +16,7 @@ public class ClientThreadCom implements Runnable {
 	}
 	
 	 public void run (){
-		try {
+		try {			
 			ObjectOutputStream WriteOutput = new ObjectOutputStream(this.ClientConnection.getOutputStream());
 			ObjectInputStream ReadInput = new ObjectInputStream(this.ClientConnection.getInputStream());
 			

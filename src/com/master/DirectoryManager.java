@@ -4,18 +4,19 @@ import java.util.ArrayList;
 import java.util.Map;
 
 public class DirectoryManager {
-
+	private static long chunkHandle;
 	private Directory root;
 	private Map<String, ArrayList<String>> chunks; // maping chunks to servers
+	private Map<String, Lease> leases; // maping chunks to Lease
 	private ArrayList<String> servers;
 	
 	public DirectoryManager (){
+		chunkHandle = 1;
 		root = new Directory();
 	}
 	
 	public boolean createDir(String src, String dirname) {
 		Directory target = getDirectory(src);
-		
 		if (target != null){
 			target.createDir(dirname);
 			return true;

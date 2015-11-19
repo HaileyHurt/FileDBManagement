@@ -1,8 +1,11 @@
 package com.master;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -22,11 +25,24 @@ public class ClientThread implements Runnable {
 		this.dirManager = dirManager;
 	}
 	
+	public ClientThread (DirectoryManager dirManager){
+		this.dirManager = dirManager;
+	}
+	
 	public void run() {
 		ServerSocket commChanel = null;
 		
 		try {
-			commChanel = new ServerSocket(port);
+			int portToClients = 0;
+			commChanel = new ServerSocket(portToClients);
+			portToClients = commChanel.getLocalPort();
+			PrintWriter outWrite = new PrintWriter(new FileOutputStream(Master.configFile));
+			System.out.println("Waiting for clients on the port:" + portToClients);
+			outWrite.println(InetAddress.getLocalHost().getHostAddress());
+			outWrite.println(portToClients);
+			outWrite.close();
+			this.port = portToClients;
+		
 		} catch (IOException ex) {
 			System.out.println("Error, failed to open a new socket to listen on.");
 			ex.printStackTrace();
@@ -37,7 +53,7 @@ public class ClientThread implements Runnable {
 			try {
 				Socket ClientConnection = commChanel.accept();
 				System.out.println ("Connection with: " + ClientConnection.getLocalAddress());
-				
+								
 				Thread th1 = new Thread(new ClientThreadCom(ClientConnection, dirManager));
 				th1.start();
 			}

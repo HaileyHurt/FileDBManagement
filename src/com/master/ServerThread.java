@@ -1,8 +1,13 @@
 package com.master;
 
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -23,11 +28,26 @@ public class ServerThread implements Runnable {
 		this.dirManager = dirManager;
 	}
 	
+	public ServerThread (DirectoryManager dirManager){
+		this.dirManager = dirManager;
+	}
+	
 	public void run() {
 		ServerSocket commChanel = null;
 		
 		try {
-			commChanel = new ServerSocket(port);
+
+			int portToServers = 0;
+			commChanel = new ServerSocket(portToServers);
+			portToServers = commChanel.getLocalPort();
+			
+			PrintWriter outWrite = new PrintWriter(new BufferedWriter(new FileWriter(Master.configFile, true)));
+			outWrite.println(portToServers);
+			outWrite.close();
+						
+			System.out.println("Waiting for servers on the port:" + portToServers);
+			this.port = portToServers;
+			
 		} catch (IOException ex) {
 			System.out.println("Error, failed to open a new socket to listen on.");
 			ex.printStackTrace();

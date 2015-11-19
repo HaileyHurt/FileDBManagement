@@ -1,15 +1,8 @@
 package com.master;
 
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.Socket;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import com.client.Client;
-
 public class Master {
 
+	public final static String configFile = "config.txt";
 	public static final int CREATE_DIR = 1;
 	public static final int DELETE_DIR = 2;
 	public static final int RENAME_DIR = 3;
@@ -22,14 +15,19 @@ public class Master {
 	public static final int HEART_BEAT_MESSAGE = 10;
 	
 	public static void main (String args[]){
-		
+		try {
 		DirectoryManager dirManager = new DirectoryManager();
 		
-		Thread clientThread = new Thread(new ClientThread(50000, dirManager));
+		Thread clientThread = new Thread(new ClientThread(dirManager));
 		clientThread.start();
 		
-		Thread serverThread = new Thread(new ServerThread(50000, dirManager));
-		serverThread.start();
+		Thread.sleep(500);
 		
+		Thread serverThread = new Thread(new ServerThread(dirManager));
+		serverThread.start();
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
 	}	
 }
