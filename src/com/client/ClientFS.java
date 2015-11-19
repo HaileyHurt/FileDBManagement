@@ -1,5 +1,21 @@
 package com.client;
 
+import com.client.Client;
+import com.chunkserver.ChunkServer;
+import com.client.ClientFS.FSReturnVals;
+import com.client.Client;
+import com.master.*;
+
+import java.io.*;
+import java.net.*;
+import java.nio.ByteBuffer;
+
+import utilities.Constants;
+import java.util.Map;
+import java.util.Vector;
+import com.chunkserver.ChunkServer;
+import com.interfaces.ClientInterface;
+
 public class ClientFS {
 
 	public enum FSReturnVals {
@@ -51,7 +67,7 @@ public class ClientFS {
             masterInput = new ObjectInputStream(clientSocket.getInputStream());
             client = new Client();
         }
-        catch
+        catch(Exception e)
         {
             System.out.println("Error initializing clientfs (ClientFS:43)");
         }
@@ -62,46 +78,33 @@ public class ClientFS {
         switch (i)
         {
             case 0:
-                return DirExists;
-                break;
+                return FSReturnVals.DirExists;
             case 1:
-                return DirNotEmpty;
-                break;
+                return FSReturnVals.DirNotEmpty;
             case 2:
-                return SrcDirNotExistent;
-                break;
+                return FSReturnVals.SrcDirNotExistent;
             case 3:
-                return DestDirExists;
-                break;
+                return FSReturnVals.DestDirExists;
             case 4:
-                return FileExists;
-                break;
+                return FSReturnVals.FileExists;
             case 5:
-                return FileDoesNotExist;
-                break;
+                return FSReturnVals.FileDoesNotExist;
             case 6:
-                return BadHandle;
-                break;
+                return FSReturnVals.BadHandle;
             case 7:
-                return RecordTooLong;
-                break;
+                return FSReturnVals.RecordTooLong;
             case 8:
-                return BadRecID;
-                break;
+                return FSReturnVals.BadRecID;
             case 9:
-                return RecDoesNotExist;
-                break;
+                return FSReturnVals.RecDoesNotExist;
             case 10:
-                return NotImplemented;
-                break;
+                return FSReturnVals.NotImplemented;
             case 11:
-                return Success;
-                break;
+                return FSReturnVals.Success;
             case 12:
-                return Fail;
-                break;
-                
-                
+                return FSReturnVals.Fail;
+            default:
+                return FSReturnVals.Fail;
         }
     }
 
@@ -132,7 +135,7 @@ public class ClientFS {
             int i = masterInput.readInt();
             outcome = intToFSReturnVal(i);
         }
-        catch
+        catch (Exception e)
         {
             outcome = FSReturnVals.Fail;
             System.out.println("Error creating directory (ClientFS:78)");
@@ -167,7 +170,7 @@ public class ClientFS {
             int i = masterInput.readInt();
             outcome = intToFSReturnVal(i);
         }
-        catch
+        catch (Exception e)
         {
             outcome = FSReturnVals.Fail;
             System.out.println("Error deleting directory (FlientFS:103)");
@@ -203,7 +206,7 @@ public class ClientFS {
             int i = masterInput.readInt();
             outcome = intToFSReturnVal(i);
         }
-        catch
+        catch (Exception e)
         {
             outcome = FSReturnVals.Fail;
             System.out.println("Error renaming directory (ClientFS:129)");
@@ -236,12 +239,14 @@ public class ClientFS {
             for (int i = 0; i < dirSize; i++)
             {
                 int sz = masterInput.readInt();
-                String temp = masterInput.read(sz);
+                byte[] bytes = new byte[sz];
+                masterInput.read(bytes, 0, sz);
+                String temp = new String(bytes);
                 contents[i] = temp;
             }
             return contents;
         }
-        catch
+        catch (Exception e)
         {
             System.out.println("Error listing directories (ClientFS:151)");
         }
@@ -274,10 +279,10 @@ public class ClientFS {
             
             masterOutput.flush();
             
-            int i = masterOutput.readInt();
+            int i = masterInput.readInt();
             outcome = intToFSReturnVal(i);
         }
-        catch
+        catch (Exception e)
         {
             outcome = FSReturnVals.Fail;
             System.out.println("Error creating file (ClientFS:178)");
@@ -309,10 +314,10 @@ public class ClientFS {
             
             masterOutput.flush();
             
-            int i = masterOutput.readInt();
+            int i = masterInput.readInt();
             outcome = intToFSReturnVal(i);
         }
-        catch
+        catch (Exception e)
         {
             outcome = FSReturnVals.Fail;
             System.out.println("Error creating file (ClientFS:203)");
@@ -335,15 +340,15 @@ public class ClientFS {
             masterOutput.writeInt(OPEN_FILE);
             
             byte[] fileBytes = FilePath.getBytes();
-            masterOutput.writeInt(tgtBytes.length);
-            masterOutput.write(tgtBytes);
+            masterOutput.writeInt(fileBytes.length);
+            masterOutput.write(fileBytes);
             
             masterOutput.flush();
             
-            int i = masterOutput.readInt();
+            int i = masterInput.readInt();
             outcome = intToFSReturnVal(i);
         }
-        catch
+        catch (Exception e)
         {
             outcome = FSReturnVals.Fail;
             System.out.println("Error opening file (ClientFS:228)");
@@ -365,10 +370,10 @@ public class ClientFS {
             masterOutput.writeObject(ofh);
             masterOutput.flush();
             
-            int i = masterOutput.readInt();
+            int i = masterInput.readInt();
             outcome = intToFSReturnVal(i);
         }
-        catch
+        catch (Exception e)
         {
             outcome = FSReturnVals.Fail;
             System.out.println("Error opening file (ClientFS:228)");

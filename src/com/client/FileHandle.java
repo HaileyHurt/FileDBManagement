@@ -1,6 +1,7 @@
 package com.client;
 import java.util.Vector;
 import java.util.Map;
+import utilities.IP;
 
 
 public class FileHandle
@@ -40,16 +41,15 @@ public class FileHandle
     
     public void addChunk(String ch, Vector<IP> servers)
     {
-        chunkHandles.put(ch);
         chunkToServerMap.put(ch, servers);
     }
     
-    public Vector<IP> getChunkHandles()
+    public Vector<String> getChunkHandles()
     {
-        Vector chunkHandVec;
-        for (Map.Entry<String, Vector<IP> ch : chunkToServerMap.entrySet())
+        Vector<String> chunkHandVec = new Vector<String>();
+        for (Map.Entry<String, Vector<IP>> ch : chunkToServerMap.entrySet())
         {
-            chunkHandVec.addEntry(ch.getKey());
+            chunkHandVec.add(ch.getKey());
         }
         return chunkHandVec;
     }
@@ -64,7 +64,7 @@ public class FileHandle
         chunkToServerMap = map;
     }
     
-    public Vector<String> getIPsForChunk(String ch)
+    public Vector<IP> getIPsForChunk(String ch)
     {
         return chunkToServerMap.get(ch);
     }

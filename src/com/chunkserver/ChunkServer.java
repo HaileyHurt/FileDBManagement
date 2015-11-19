@@ -36,7 +36,9 @@ import com.interfaces.ChunkServerInterface;
 public class ChunkServer implements ChunkServerInterface, Runnable {	
 	//Used for the file system
 	public static long counter;
-	
+	public final static String ConfigFile = "config.txt";
+    public static int PayloadSZ = Integer.SIZE/Byte.SIZE;  //Number of bytes in an integer
+    public static int CMDlength = Integer.SIZE/Byte.SIZE;  //Number of bytes in an integer
 	
 	//Define data for distributed chunkserver
 	HashMap<String, RandomAccessFile> fileMap;

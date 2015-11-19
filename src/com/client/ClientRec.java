@@ -1,7 +1,25 @@
 
 package com.client;
 
+import com.client.Client;
+import com.chunkserver.ChunkServer;
 import com.client.ClientFS.FSReturnVals;
+import com.client.Client;
+import com.master.*;
+
+import java.io.*;
+import java.net.*;
+import java.nio.ByteBuffer;
+
+import utilities.Constants;
+import utilities.IP;
+import java.util.Map;
+import java.util.Vector;
+import com.chunkserver.ChunkServer;
+import com.interfaces.ClientInterface;
+import com.client.RID;
+import com.client.FileHandle;
+import com.client.TinyRec;
 
 public class ClientRec {
 
@@ -53,8 +71,7 @@ public class ClientRec {
             client = new Client();
             
         }
-
-        catch
+        catch (Exception e)
         {
             System.out.println("Error initializing clientrec (ClientRec:60)");
         }
@@ -65,45 +82,33 @@ public class ClientRec {
         switch (i)
         {
             case 0:
-                return DirExists;
-                break;
+                return FSReturnVals.DirExists;
             case 1:
-                return DirNotEmpty;
-                break;
+                return FSReturnVals.DirNotEmpty;
             case 2:
-                return SrcDirNotExistent;
-                break;
+                return FSReturnVals.SrcDirNotExistent;
             case 3:
-                return DestDirExists;
-                break;
+                return FSReturnVals.DestDirExists;
             case 4:
-                return FileExists;
-                break;
+                return FSReturnVals.FileExists;
             case 5:
-                return FileDoesNotExist;
-                break;
+                return FSReturnVals.FileDoesNotExist;
             case 6:
-                return BadHandle;
-                break;
+                return FSReturnVals.BadHandle;
             case 7:
-                return RecordTooLong;
-                break;
+                return FSReturnVals.RecordTooLong;
             case 8:
-                return BadRecID;
-                break;
+                return FSReturnVals.BadRecID;
             case 9:
-                return RecDoesNotExist;
-                break;
+                return FSReturnVals.RecDoesNotExist;
             case 10:
-                return NotImplemented;
-                break;
+                return FSReturnVals.NotImplemented;
             case 11:
-                return Success;
-                break;
+                return FSReturnVals.Success;
             case 12:
-                return Fail;
-                break;
-                
+                return FSReturnVals.Fail;
+            default:
+                return FSReturnVals.Fail;
                 
         }
     }
@@ -117,54 +122,84 @@ public class ClientRec {
      */
     public FSReturnVals AppendRecord(FileHandle ofh, byte[] payload, RID RecordID)
     {
-        FSReturnVals outcome;
-        IP ip;  // should set ip address, port number
-        Vector<String> servers = ofh.getChunkHandles();
+        FSReturnVals outcome = FSReturnVals.Fail;
+        // should set ip address, port number
+        Vector<IP> servers = ofh.getServersForChunk(RecordID.getChunkHandle());
         int numServers = servers.size();
-        
+        if (ofh == null)
+        {
+            return FSReturnVals.BadHandle;
+        }
+        if (RecordID != null)
+        {
+            return FSReturnVals.BadRecID;
+        }
+        if (payload.length > ChunkSize)
+        {
+            return FSReturnVals.RecordTooLong;
+        }
         for(int i = 0; i < numServers; i++)
         {
+            IP ip = new IP();
+            ip.setPort(servers.elementAt(i).getPort());
+            ip.setAddress(servers.elementAt(i).getAddress());
             try
-            {   
-                RID rid = (RID) masterInput.readObject(); 
-                RecordID.chunkhandle = rid.chunkhandle;
-                RecordID.byteoffset = rid.byteoffset;
-                RecordID.size = rid.size;
+            {
+                Socket sock = new Socket(ip.getAddress(), ip.getPort());
+                ObjectOutputStream serverOutput = new ObjectOutputStream(sock.getOutputStream());
+                serverOutput.flush();
+                ObjectInputStream serverInput = new ObjectInputStream(sock.getInputStream());
+                serverOutput.writeInt(Constants.IsClient);
                 
-                masterOutput.writeInt(Constants.APPEND_RECORD); 
-                masterOutput.writeInt(rid.chunkhandle.length);
-                masterOutput.writeInt(rid.chunkhandle);
-                masterOutput.flush(); 
-                masterOutput.writeInt(rid.index); 
-                masterOutput.writeInt(numServers);
-                byte[] ipadd = ip.getAddress().getBytes();
-                masterOutput.writeInt(ipadd.length);
-                masterOutput.flush();
-                masterOutput.write(ipadd);
-                masterOutput.writeInt(ip.getPort()); 
-                masterOutput.flush(); 
+                serverOutput.writeInt(Constants.APPEND_RECORD);
+                serverOutput.writeInt(RecordID.getChunkHandle().length());
+                serverOutput.writeBytes(RecordID.getChunkHandle());
+                serverOutput.flush();
+                serverOutput.writeInt(RecordID.index);
+                serverOutput.writeInt(numServers);
                 
-                FileHandle fh = (FileHandle) masterInput.readObject();
-                ofh.getFileName = fh.getFileName;
+                int response = serverInput.readInt();
+                if (response == Constants.FALSE)
+                {
+                    i--;
+                    continue;
+                }
+                else
+                {
+                    for(int j = 0; j < numServers; j++)
+                    {
+                        byte[] ipadd = ip.getAddress().getBytes();
+                        serverOutput.writeInt(ipadd.length);
+                        serverOutput.flush();
+                        serverOutput.write(ipadd);
+                        serverOutput.writeInt(ip.getPort());
+                        serverOutput.flush();
+                    }
+                    
+                    serverOutput.writeInt(payload.length);
+                    serverOutput.write(payload);
+                }
                 
-                int j = masterInput.readInt();
-                outcome = intToFSReturnVal(j)
+                //int type = serverOutput.readInt();
+                //int command = serverOutput.readInt();
+                //if(type == Constants.IsServer && command = Constants.APPEND_RECORD)
+                //{
+                    int ch = serverInput.readInt();
+                    int ind = serverInput.readInt();
+                    int ipaddlen = serverInput.readInt();
+                byte[] ipadd = new byte[ipaddlen];
+                serverInput.read(ipadd, 0, ipaddlen);
+                    String ipstr = new String(ipadd, "UTF-8");
+                //}
+                
+                int j = serverInput.readInt();
+                outcome = intToFSReturnVal(j);
 
             }
             catch (Exception e)
             {
                 outcome = FSReturnVals.Fail;
                 System.out.println("Unable to append records (ClientREC:65)");
-            }
-            
-            if(outcome == Constants.TRUE)
-            {
-                ClientFS.client.writeChunk(RecordID.chunkhandle, payload, RecordID.byteoffset);
-                outcome = FSReturnVals.Success; 
-            }
-            else if(outcome == Constants.FALSE)
-            {
-                masterOutput.writeInt(Constants.DataToWrite);
             }
         }
 
@@ -190,34 +225,46 @@ public class ClientRec {
             return FSReturnVals.BadRecID;
         }
         
-        FSReturnVals outcome;
-        try
+        FSReturnVals outcome = FSReturnVals.Fail;
+        Vector<IP> servers = ofh.getServersForChunk(RecordID.getChunkHandle());
+        int numServers = servers.size();
+        for (int i = 0; i < numServers; i++)
         {
-            masteroutput.writeInt(DELETE_RECORD);
-            masteroutput.writeObject(ofh);
-            masteroutput.flush();
-            masteroutput.writeObject(RecordID);
-            masteroutput.flush();
-            
-            FileHandle fh = (FileHandle) masterInput.readObject();
-            ofh.setFileName = fh.getFileName;
-            if (fh.isOpen())
+            IP ip = new IP();
+            ip.setPort(servers.elementAt(i).getPort());
+            ip.setAddress(servers.elementAt(i).getAddress());
+            try
             {
-                ofh.open();
+                Socket sock = new Socket(ip.getAddress(), ip.getPort());
+                ObjectOutputStream serverOutput = new ObjectOutputStream(sock.getOutputStream());
+                serverOutput.flush();
+                ObjectInputStream serverInput = new ObjectInputStream(sock.getInputStream());
+                serverOutput.writeInt(Constants.IsClient);
+               
+                serverOutput.writeInt(Constants.DELETE_RECORD);
+                serverOutput.writeInt(RecordID.getChunkHandle().length());
+                serverOutput.writeBytes(RecordID.getChunkHandle());
+                serverOutput.flush();
+                serverOutput.writeInt(RecordID.index);
+                serverOutput.writeInt(numServers);
+                
+                int response = serverInput.readInt();
+                if (response == Constants.FALSE)
+                {
+                    i--;
+                    continue;
+                }
+                
+                int j = serverInput.readInt();
+                outcome = intToFSReturnVal(j);
+                
             }
-            
-            RID rid = (RID) masterInput.readObject();
-            RecordID.setChunkHandle() = rid.getChunkHandle();
-            RecordID.setOffset() = rid.getOffset();
-            RecordID.setRecordSize() = rid.getRecordSize();
-            
-            int i = masterInput.readInt();
-            outcome = intToFSReturnVal(i);
-        }
-        catch (Exception e)
-        {
-            outcome = FSReturnVals.Fail;
-            System.out.println("Unable to delete record (ClientRED:115)");
+            catch (Exception e)
+            {
+                outcome = FSReturnVals.Fail;
+                System.out.println("Unable to append records (ClientREC:65)");
+            }
+
         }
         
         return outcome;
@@ -231,42 +278,77 @@ public class ClientRec {
 	 */
 	public FSReturnVals ReadFirstRecord(FileHandle ofh, TinyRec rec)
     {
-        FSReturnVals outcome;
-        
-        try
+        FSReturnVals outcome = FSReturnVals.Fail;
+        // should set ip address, port number
+        Vector<IP> servers = ofh.getServersForChunk(rec.getRID().getChunkHandle());
+        int numServers = servers.size();
+        if (ofh == null)
         {
-            masteroutput.writeInt(READ_FIRST_RECORD);
-            masteroutput.writeObject(ofh);
-            masteroutput.flush();
-            
-            FileHandle fh = (FileHandle) masterInput.readObject();
-            ofh.getFileName = fh.setFileName;
-            if (tempFH.isOpen())
+            return FSReturnVals.BadHandle;
+        }
+        if (rec == null)
+        {
+            return FSReturnVals.BadRecID;
+        }
+        for(int i = 0; i < numServers; i++)
+        {
+            IP ip = new IP();
+            ip.setPort(servers.elementAt(i).getPort());
+            ip.setAddress(servers.elementAt(i).getAddress());
+            try
             {
-                ofh.open();
+                Socket sock = new Socket(ip.getAddress(), ip.getPort());
+                ObjectOutputStream serverOutput = new ObjectOutputStream(sock.getOutputStream());
+                serverOutput.flush();
+                ObjectInputStream serverInput = new ObjectInputStream(sock.getInputStream());
+                serverOutput.writeInt(Constants.IsClient);
+                
+                serverOutput.writeInt(Constants.READ_FIRST_RECORD);
+                serverOutput.writeInt(rec.getRID().getChunkHandle().length());
+                serverOutput.writeBytes(rec.getRID().getChunkHandle());
+                serverOutput.flush();
+                
+                int response = serverInput.readInt();
+                if (response == Constants.FALSE)
+                {
+                    i--;
+                    continue;
+                }
+                
+                //int type = serverOutput.readInt();
+                //int command = serverOutput.readInt();
+                //if(type == Constants.IsServer && command = Constants.READ_FIRST_RECORD)
+                //{
+                    int sz = serverInput.readInt();
+                byte[] data = new byte[sz];
+                serverInput.read(data, 0, sz);
+                    String datastr = new String(data, "UTF-8");
+                    if(data.length > 0)
+                    {
+                        int j = serverInput.readInt();
+                        outcome = intToFSReturnVal(j);
+                        rec.setPayload(data);
+                        break;
+                    }
+                    else
+                    {
+                        i--;
+                        continue;
+                    }
+                //}
+                //else
+                //{
+                //   int j = serverInput.readInt();
+                //    outcome = intToFSReturnVal(j)
+                //}
             }
-            
-            RID rid = (RID) masterInput.readObject();
-            rec.setRID(rid);
-            
-            int i = masterInput.readInt();
-            outcome = intToFSReturnVal(i);
-        }
-        catch (Exception e)
-        {
-            outcome = FSReturnVals.Fail;
-            System.out.println("Unable to read first record (ClientREC:150)");
+            catch (Exception e)
+            {
+                outcome = FSReturnVals.Fail;
+                System.out.println("Unable to append records (ClientREC:65)");
+            }
         }
         
-        if (converted != FSReturnVals.Success)
-        {
-            rec.setRID(null);
-        }
-        else
-        {
-            byte[] data = ClientFS.client.readChunk(rec.getRID().getChunkHandle, rec.getRID().getOffset, rec.getRID().getRecordSize);
-            rec.setPayload(data);
-        }
         return outcome;
 	}
 
@@ -278,41 +360,78 @@ public class ClientRec {
 	 */
 	public FSReturnVals ReadLastRecord(FileHandle ofh, byte[] payload, RID RecordID)
     {
-        FSReturnVals outcome;
-        
-        try
+        FSReturnVals outcome = FSReturnVals.Fail;
+        // should set ip address, port number
+        Vector<IP> servers = ofh.getServersForChunk(RecordID.getChunkHandle());
+        int numServers = servers.size();
+        if (ofh == null)
         {
-            masteroutput.writeInt(READ_LAST_RECORD);
-            masteroutput.writeObject(ofh);
-            masteroutput.flush();
-            
-            FileHandle fh = (FileHandle) masterInput.readObject();
-            ofh.setFileName = fh.getFileName;
-            if (fh.isOpen())
+            return FSReturnVals.BadHandle;
+        }
+        if (RecordID == null)
+        {
+            return FSReturnVals.BadRecID;
+        }
+        for(int i = 0; i < numServers; i++)
+        {
+            IP ip = new IP();
+            ip.setPort(servers.elementAt(i).getPort());
+            ip.setAddress(servers.elementAt(i).getAddress());
+            try
             {
-                ofh.open();
+                Socket sock = new Socket(ip.getAddress(), ip.getPort());
+                ObjectOutputStream serverOutput = new ObjectOutputStream(sock.getOutputStream());
+                serverOutput.flush();
+                ObjectInputStream serverInput = new ObjectInputStream(sock.getInputStream());
+                serverOutput.writeInt(Constants.IsClient);
+                
+                serverOutput.writeInt(Constants.READ_LAST_RECORD);
+                serverOutput.writeInt(RecordID.getChunkHandle().length());
+                serverOutput.writeBytes(RecordID.getChunkHandle());
+                serverOutput.flush();
+                
+                int response = serverInput.readInt();
+                if (response == Constants.FALSE)
+                {
+                    i--;
+                    continue;
+                }
+                
+                //int type = serverOutput.readInt();
+                //int command = serverOutput.readInt();
+                //if(type == Constants.IsServer && command = Constants.READ_LAST_RECORD)
+                //{
+                    int sz = serverInput.readInt();
+                byte[] data = new byte[sz];
+                serverInput.read(data, 0, sz);
+                    String datastr = new String(data, "UTF-8");
+                    if(data.length > 0)
+                    {
+                        int j = serverInput.readInt();
+                        outcome = intToFSReturnVal(j);
+                        for (int k = 0; k < data.length; k++)
+                        {
+                            payload[k] = data[k];
+                        }
+                        break;
+                    }
+                    else
+                    {
+                        i--;
+                        continue;
+                    }
+                //}
+                //else
+                //{
+                //    int j = serverInput.readInt();
+                //    outcome = intToFSReturnVal(j)
+                //}
             }
-            
-            RID rid = (RID) masterInput.readObject();
-            rec.setRID(rid);
-            
-            int i = masterInput.readInt();
-            outcome = intToFSReturnVal(i);
-        }
-        catch (Exception e)
-        {
-            outcome = FSReturnVals.Fail;
-            System.out.println("Unable to read last record (ClientREC:194)");
-        }
-        
-        if (converted != FSReturnVals.Success)
-        {
-            rec.setRID(null);
-        }
-        else
-        {
-            byte[] data = ClientFS.client.readChunk(rec.getRID().getChunkHandle, rec.getRID().getOffset, rec.getRID().getRecordSize);
-            rec.setPayload(data);
+            catch (Exception e)
+            {
+                outcome = FSReturnVals.Fail;
+                System.out.println("Unable to append records (ClientREC:65)");
+            }
         }
         
         return outcome;
@@ -326,8 +445,87 @@ public class ClientRec {
      * Example usage: 1. ReadFirstRecord(FH1, tinyRec1) 2. ReadNextRecord(FH1,
      * rec1, tinyRec2) 3. ReadNextRecord(FH1, rec2, tinyRec3)
      */
-    public FSReturnVals ReadNextRecord(FileHandle ofh, RID pivot, TinyRec rec){
-        return null;
+    public FSReturnVals ReadNextRecord(FileHandle ofh, RID pivot, TinyRec rec)
+    {
+        FSReturnVals outcome = FSReturnVals.Fail;
+        // should set ip address, port number
+        Vector<IP> servers = ofh.getServersForChunk(pivot.getChunkHandle());
+        int numServers = servers.size();
+        if (ofh == null)
+        {
+            return FSReturnVals.BadHandle;
+        }
+        if (rec == null)
+        {
+            return FSReturnVals.RecDoesNotExist;
+        }
+        for(int i = 0; i < numServers; i++)
+        {
+            IP ip = new IP();
+            ip.setPort(servers.elementAt(i).getPort());
+            ip.setAddress(servers.elementAt(i).getAddress());
+            try
+            {
+                Socket sock = new Socket(ip.getAddress(), ip.getPort());
+                ObjectOutputStream serverOutput = new ObjectOutputStream(sock.getOutputStream());
+                serverOutput.flush();
+                ObjectInputStream serverInput = new ObjectInputStream(sock.getInputStream());
+                serverOutput.writeInt(Constants.IsClient);
+                
+                serverOutput.writeInt(Constants.READ_NEXT_RECORD);
+                serverOutput.writeInt(pivot.getChunkHandle().length());
+                serverOutput.writeBytes(pivot.getChunkHandle());
+                serverOutput.flush();
+                serverOutput.writeInt(pivot.index);
+                
+                int response = serverInput.readInt();
+                if (response == Constants.FALSE)
+                {
+                    i--;
+                    continue;
+                }
+                else if (response == Constants.NOT_IN_CHUNK)
+                {
+                    i--;
+                    continue;
+                }
+                
+                //int type = serverOutput.readInt();
+                //int command = serverOutput.readInt();
+                //if(type == Constants.IsServer && command = Constants.READ_NEXT_RECORD)
+                //{
+                    int sz = serverInput.readInt();
+                byte[] data = new byte[sz];
+                serverInput.read(data, 0, sz);
+                    String datastr = new String(data, "UTF-8");
+                    if(data.length > 0)
+                    {
+                        int j = serverInput.readInt();
+                        outcome = intToFSReturnVal(j);
+                        rec.setPayload(data);
+                        break;
+                    }
+                    else
+                    {
+                        i--;
+                        continue;
+                    }
+                //}
+                //else
+                //{
+                //    int j = serverInput.readInt();
+                //    outcome = intToFSReturnVal(j)
+                //}
+                
+            }
+            catch (Exception e)
+            {
+                outcome = FSReturnVals.Fail;
+                System.out.println("Unable to append records (ClientREC:65)");
+            }
+        }
+        
+        return outcome;
     }
     
     /**
@@ -338,8 +536,87 @@ public class ClientRec {
      * Example usage: 1. ReadLastRecord(FH1, tinyRec1) 2. ReadPrevRecord(FH1,
      * recn-1, tinyRec2) 3. ReadPrevRecord(FH1, recn-2, tinyRec3)
      */
-    public FSReturnVals ReadPrevRecord(FileHandle ofh, RID pivot, TinyRec rec){
-        return null;
+    public FSReturnVals ReadPrevRecord(FileHandle ofh, RID pivot, TinyRec rec)
+    {
+        FSReturnVals outcome = FSReturnVals.Fail;
+        // should set ip address, port number
+        Vector<IP> servers = ofh.getServersForChunk(pivot.getChunkHandle());
+        int numServers = servers.size();
+        if (ofh == null)
+        {
+            return FSReturnVals.BadHandle;
+        }
+        if (rec == null)
+        {
+            return FSReturnVals.RecDoesNotExist;
+        }
+        for(int i = 0; i < numServers; i++)
+        {
+            IP ip = new IP();
+            ip.setPort(servers.elementAt(i).getPort());
+            ip.setAddress(servers.elementAt(i).getAddress());
+            try
+            {
+                Socket sock = new Socket(ip.getAddress(), ip.getPort());
+                ObjectOutputStream serverOutput = new ObjectOutputStream(sock.getOutputStream());
+                serverOutput.flush();
+                ObjectInputStream serverInput = new ObjectInputStream(sock.getInputStream());
+                serverOutput.writeInt(Constants.IsClient);
+                
+                serverOutput.writeInt(Constants.READ_PREV_RECORD);
+                serverOutput.writeInt(pivot.getChunkHandle().length());
+                serverOutput.writeBytes(pivot.getChunkHandle());
+                serverOutput.flush();
+                serverOutput.writeInt(pivot.index);
+                
+                int response = serverInput.readInt();
+                if (response == Constants.FALSE)
+                {
+                    i--;
+                    continue;
+                }
+                else if (response == Constants.NOT_IN_CHUNK)
+                {
+                    i--;
+                    continue;
+                }
+                
+                //int type = serverOutput.readInt();
+                //int command = serverOutput.readInt();
+                //if(type == Constants.IsServer && command = Constants.READ_NEXT_RECORD)
+                //{
+                int sz = serverInput.readInt();
+                byte[] data = new byte[sz];
+                serverInput.read(data, 0, sz);
+                String datastr = new String(data, "UTF-8");
+                if(data.length > 0)
+                {
+                    int j = serverInput.readInt();
+                    outcome = intToFSReturnVal(j);
+                    rec.setPayload(data);
+                    break;
+                }
+                else
+                {
+                    i--;
+                    continue;
+                }
+                //}
+                //else
+                //{
+                //    int j = serverInput.readInt();
+                //    outcome = intToFSReturnVal(j)
+                //}
+                
+            }
+            catch (Exception e)
+            {
+                outcome = FSReturnVals.Fail;
+                System.out.println("Unable to append records (ClientREC:65)");
+            }
+        }
+        
+        return outcome;
     }
     
 }

@@ -13,6 +13,7 @@ public class RID
         chunkHandle = "";
         offset = 0;
         recordSize = 0;
+        index = 0;
         exists = true;
     }
     
