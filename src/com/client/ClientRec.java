@@ -181,6 +181,15 @@ public class ClientRec {
 	 */
 	public FSReturnVals DeleteRecord(FileHandle ofh, RID RecordID)
     {
+        if (ofh == null)
+        {
+            return FSReturnVals.BadHandle;
+        }
+        if (RecordID == null)
+        {
+            return FSReturnVals.BadRecID;
+        }
+        
         FSReturnVals outcome;
         try
         {
