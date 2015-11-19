@@ -120,7 +120,7 @@ public class ClientRec {
         FSReturnVals outcome;
         IP ip; 
         // set ip address, port number
-        Vector<String> servers = ofh.getChunkHandles();
+        Vector<IP> servers = ofh.getChunkHandles();
         int numServers = servers.size();
         
         try

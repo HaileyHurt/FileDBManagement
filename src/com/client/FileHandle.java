@@ -6,7 +6,7 @@ import java.util.Map;
 public class FileHandle
 {
     String fileName;
-    Map<String, Vector<String>> chunkToServerMap;
+    Map<String, Vector<IP>> chunkToServerMap;
     
     boolean opened;
     
@@ -32,34 +32,34 @@ public class FileHandle
         return fileName;
     }
     
-    public Vector<String> getServersForChunk(String ch)
+    public Vector<IP> getServersForChunk(String ch)
     {
-        Vector<String> vec = chunkToServerMap.get(ch);
+        Vector<IP> vec = chunkToServerMap.get(ch);
         return vec;
     }
     
-    public void addChunk(String ch, Vector<String> locs)
+    public void addChunk(String ch, Vector<IP> servers)
     {
         chunkHandles.put(ch);
-        chunkToServerMap.put(ch, locs);
+        chunkToServerMap.put(ch, servers);
     }
     
-    public Vector<String> getChunkHandles()
+    public Vector<IP> getChunkHandles()
     {
         Vector chunkHandVec;
-        for (Map.Entry<String, Vector<String> ch : chunkToServerMap.entrySet())
+        for (Map.Entry<String, Vector<IP> ch : chunkToServerMap.entrySet())
         {
             chunkHandVec.addEntry(ch.getKey());
         }
         return chunkHandVec;
     }
     
-    public Map<String, Vector<String>> getChunkToServerMap()
+    public Map<String, Vector<IP>> getChunkToServerMap()
     {
         return chunkToServerMap;
     }
     
-    public void setChunkToServerMap(Map<String, Vector<String>> map)
+    public void setChunkToServerMap(Map<String, Vector<IP>> map)
     {
         chunkToServerMap = map;
     }
