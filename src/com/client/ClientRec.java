@@ -132,9 +132,11 @@ public class ClientRec {
             masterOutput.writeInt(rid.chunkhandle);
             masterOutput.flush(); 
             masterOutput.writeInt(rid.index); 
-            // send number of chunkservers with the chunk on it 
-            masterOutput.writeInt(ip.getAddress()); 
-            masterOutput.flush(); 
+            // send number of chunkservers with the chunk on it
+            byte[] ipadd = ip.getAddress().getBytes();
+            masterOutput.writeInt(ipadd.length);
+            masterOutput.flush();
+            masterOutput.write(ipadd);
             masterOutput.writeInt(ip.getPort()); 
             masterOutput.flush(); 
             
