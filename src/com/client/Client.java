@@ -1,6 +1,6 @@
 package com.client;
 
-import java.io.BufferedInputStream;
+/*import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -10,7 +10,9 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
-import java.net.Socket;
+import java.net.Socket;*/
+import java.io.*;
+import java.net.*;
 import java.nio.ByteBuffer;
 
 import com.chunkserver.ChunkServer;
