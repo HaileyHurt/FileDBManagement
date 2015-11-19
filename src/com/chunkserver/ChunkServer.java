@@ -521,6 +521,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 					return;
 				}
 				
+				long endOfChunk = chunk.getPosition() + Constants.ChunkSize;
 				file.seek(chunk.getPosition() + Long.BYTES); //seek to start of first record
 				//iterate to the last record
 				int recSize = file.readInt();
@@ -537,7 +538,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 					else {
 						recSize = nextRecSize;
 						pos = file.getFilePointer();
-						if(pos+recSize >= file.length()) break; //end of chunk reached
+						if(pos+recSize >= endOfChunk) break; //end of chunk reached
 					}
 				}
 				file.seek(pos); //seek to position of last record
@@ -553,11 +554,125 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 		}
 		
 		private void readNextRecord() {
-			
+			long handle = Client.ReadLongFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), clientReadStream);
+			int recIndex = Client.ReadIntFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), clientReadStream);
+			ChunkInfo chunk = chunkMap.get(Long.toString(handle));
+			try {
+				if(chunk == null) {
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;
+				}
+				
+				RandomAccessFile file = fileMap.get(chunk.getFilename());
+				if(file == null) {
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;
+				}
+				long endOfChunk = chunk.getPosition() + Constants.ChunkSize;
+				file.seek(chunk.getPosition() + Long.BYTES); //seek to start of first record
+				//iterate to the requested record index
+				for(int i = 0; i <= recIndex; i++) {
+					int recSize = file.readInt();
+					if(recSize == 0) { //records ended
+						clientWriteStream.writeInt(Constants.FALSE);
+						clientWriteStream.flush();
+						return;					
+					}
+					
+					file.seek(file.getFilePointer()+recSize);
+					if(file.getFilePointer() >= endOfChunk) { //reached end of chunk
+						clientWriteStream.writeInt(Constants.FALSE);
+						clientWriteStream.flush();
+						return;		
+					}
+				}
+				long pos = file.getFilePointer();
+				if(pos >= endOfChunk) {
+					clientWriteStream.writeInt(Constants.NOT_IN_CHUNK);
+					clientWriteStream.flush();
+					return;							
+				}
+				int recSize = file.readInt();
+				if(recSize == 0) { //records ended
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;					
+				}
+				byte[] data = new byte[recSize];
+				file.read(data, 0, recSize);
+				clientWriteStream.writeInt(recSize);
+				clientWriteStream.write(data);
+				clientWriteStream.flush();
+			}
+			catch (IOException e) {
+				e.printStackTrace();
+			}							
 		}
 		
 		private void readPrevRecord() {
-			
+			long handle = Client.ReadLongFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), clientReadStream);
+			int recIndex = Client.ReadIntFromInputStream("chunkserver ClientThread:"+socket.getInetAddress(), clientReadStream);
+			ChunkInfo chunk = chunkMap.get(Long.toString(handle));
+			try {
+				if(chunk == null) {
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;
+				}
+				
+				if(recIndex == 0) {
+					clientWriteStream.writeInt(Constants.NOT_IN_CHUNK);
+					clientWriteStream.flush();
+					return;					
+				}
+				
+				RandomAccessFile file = fileMap.get(chunk.getFilename());
+				if(file == null) {
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;
+				}
+				long endOfChunk = chunk.getPosition() + Constants.ChunkSize;
+				file.seek(chunk.getPosition() + Long.BYTES); //seek to start of first record
+				//iterate to one less than requested record index
+				for(int i = 0; i < recIndex-1; i++) {
+					int recSize = file.readInt();
+					if(recSize == 0) { //records ended
+						clientWriteStream.writeInt(Constants.FALSE);
+						clientWriteStream.flush();
+						return;					
+					}
+					
+					file.seek(file.getFilePointer()+recSize);
+					if(file.getFilePointer() >= endOfChunk) { //reached end of chunk
+						clientWriteStream.writeInt(Constants.FALSE);
+						clientWriteStream.flush();
+						return;		
+					}
+				}
+				long pos = file.getFilePointer();
+				if(pos >= endOfChunk) {
+					clientWriteStream.writeInt(Constants.NOT_IN_CHUNK);
+					clientWriteStream.flush();
+					return;							
+				}
+				int recSize = file.readInt();
+				if(recSize == 0) { //records ended
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;					
+				}
+				byte[] data = new byte[recSize];
+				file.read(data, 0, recSize);
+				clientWriteStream.writeInt(recSize);
+				clientWriteStream.write(data);
+				clientWriteStream.flush();
+			}
+			catch (IOException e) {
+				e.printStackTrace();
+			}					
 		}
 		
 		private void appendRecord() {
