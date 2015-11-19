@@ -60,6 +60,15 @@ public class Client implements ClientInterface {
 		return PayloadSize;
 	}
 	
+	public static long ReadLongFromInputStream(String caller, ObjectInputStream instream){
+		long PayloadSize = -1;
+		
+		byte[] InputBuff = RecvPayload(caller, instream, 8);
+		if (InputBuff != null)
+			PayloadSize = ByteBuffer.wrap(InputBuff).getLong();
+		return PayloadSize;
+	}
+	
 	/**
 	 * Initialize the client  FileNotFoundException
 	 */
