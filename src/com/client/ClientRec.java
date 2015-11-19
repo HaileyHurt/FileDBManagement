@@ -118,53 +118,55 @@ public class ClientRec {
     public FSReturnVals AppendRecord(FileHandle ofh, byte[] payload, RID RecordID)
     {
         FSReturnVals outcome;
-        IP ip; 
-        // set ip address, port number
-        Vector<IP> servers = ofh.getChunkHandles();
+        IP ip;  // should set ip address, port number
+        Vector<String> servers = ofh.getChunkHandles();
         int numServers = servers.size();
         
-        try
-        {   
-            RID rid = (RID) masterInput.readObject(); 
-            RecordID.chunkhandle = rid.chunkhandle;
-            RecordID.byteoffset = rid.byteoffset;
-            RecordID.size = rid.size;
-            
-            masterOutput.writeInt(Constants.APPEND_RECORD); 
-            masterOutput.writeInt(rid.chunkhandle.length);
-            masterOutput.writeInt(rid.chunkhandle);
-            masterOutput.flush(); 
-            masterOutput.writeInt(rid.index); 
-            // send number of chunkservers with the chunk on it
-            byte[] ipadd = ip.getAddress().getBytes();
-            masterOutput.writeInt(ipadd.length);
-            masterOutput.flush();
-            masterOutput.write(ipadd);
-            masterOutput.writeInt(ip.getPort()); 
-            masterOutput.flush(); 
-            
-            FileHandle fh = (FileHandle) masterInput.readObject();
-            ofh.getFileName = fh.getFileName;
-            
-            int i = masterInput.readInt();
-            outcome = intToFSReturnVal(i)
+        for(int i = 0; i < numServers; i++)
+        {
+            try
+            {   
+                RID rid = (RID) masterInput.readObject(); 
+                RecordID.chunkhandle = rid.chunkhandle;
+                RecordID.byteoffset = rid.byteoffset;
+                RecordID.size = rid.size;
+                
+                masterOutput.writeInt(Constants.APPEND_RECORD); 
+                masterOutput.writeInt(rid.chunkhandle.length);
+                masterOutput.writeInt(rid.chunkhandle);
+                masterOutput.flush(); 
+                masterOutput.writeInt(rid.index); 
+                masterOutput.writeInt(numServers);
+                byte[] ipadd = ip.getAddress().getBytes();
+                masterOutput.writeInt(ipadd.length);
+                masterOutput.flush();
+                masterOutput.write(ipadd);
+                masterOutput.writeInt(ip.getPort()); 
+                masterOutput.flush(); 
+                
+                FileHandle fh = (FileHandle) masterInput.readObject();
+                ofh.getFileName = fh.getFileName;
+                
+                int j = masterInput.readInt();
+                outcome = intToFSReturnVal(j)
 
+            }
+            catch (Exception e)
+            {
+                outcome = FSReturnVals.Fail;
+                System.out.println("Unable to append records (ClientREC:65)");
+            }
+            
+            if(outcome == Constants.TRUE)
+            {
+                ClientFS.client.writeChunk(RecordID.chunkhandle, payload, RecordID.byteoffset);
+            }
+            else if(outcome == Constants.FALSE)
+            {
+                masterOutput.writeInt(Constants.DataToWrite);
+            }
         }
-        catch (Exception e)
-        {
-            outcome = FSReturnVals.Fail;
-            System.out.println("Unable to append records (ClientREC:65)");
-        }
-        
-        if(outcome == Constants.TRUE)
-        {
-            ClientFS.client.writeChunk(RecordID.chunkhandle, payload, RecordID.byteoffset);
-        }
-        else if(outcome == Constants.FALSE)
-        {
-            masterOutput.writeInt(Constants.DataToWrite);
-        }
-        
+
         return outcome;
     }
 
