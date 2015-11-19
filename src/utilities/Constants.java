@@ -1,7 +1,7 @@
 package utilities;
 
 public class Constants {
-	final static String filePath = "csci485/";	//or C:\\newfile.txt
+	public final static String filePath = "csci485/";	//or C:\\newfile.txt
 	public final static String ConfigFile = "config";
 	public final static int ChunkSize = 1024 * 1024; //1 MB chunk sizes
 	public static int PayloadSZ = Integer.SIZE/Byte.SIZE;  //Number of bytes in an integer

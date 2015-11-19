@@ -23,6 +23,8 @@ import java.util.Vector;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import utilities.Constants;
+
 import com.client.Client;
 import com.interfaces.ChunkServerInterface;
 
@@ -33,39 +35,12 @@ import com.interfaces.ChunkServerInterface;
  */
 
 public class ChunkServer implements ChunkServerInterface, Runnable {
-	final static String filePath = "csci485/";	//or C:\\newfile.txt
-	public final static String ClientConfigFile = "ClientConfig.txt";
-	public final static int ChunkSize = 1024 * 1024; //1 MB chunk sizes
+
 	
 	//Used for the file system
 	public static long counter;
 	
-	public static int PayloadSZ = Integer.SIZE/Byte.SIZE;  //Number of bytes in an integer
-	public static int CMDlength = Integer.SIZE/Byte.SIZE;  //Number of bytes in an integer  
-	
-	//Commands recognized by the Server
-	public static final int CreateChunkCMD = 101;
-	public static final int ReadChunkCMD = 102;
-	public static final int WriteChunkCMD = 103;
-	
-	public static final int HeartBeatNoLease = 2;
-	public static final int HeartBeatWithLease = 3;
-	public static final int HeartBeatInterval = 2000; //Interval in milliseconds
-	
-	public static final int Ping = 4;
-	public static final int ReadFirstRecord = 5;
-	public static final int ReadLastRecord = 6;
-	public static final int ReadNextRecord = 7;
-	public static final int ReadPrevRecord = 8;
-	public static final int AppendRecord = 9;
-	public static final int DataToWrite = 10;
-	
-	public static final int SendLease = 11;
-	public static final int DeleteChunks = 12;
-	
-	//Replies provided by the server
-	public static final int TRUE = 1;
-	public static final int FALSE = 0;
+
 	
 	//Define data for distributed chunkserver
 	HashMap<String, RandomAccessFile> fileMap;
@@ -130,7 +105,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 	public boolean writeChunk(String ChunkHandle, byte[] payload, int offset) {
 		try {
 			//If the file corresponding to ChunkHandle does not exist then create it before writing into it
-			RandomAccessFile raf = new RandomAccessFile(filePath + ChunkHandle, "rw");
+			RandomAccessFile raf = new RandomAccessFile(Constants.filePath + ChunkHandle, "rw");
 			raf.seek(offset);
 			raf.write(payload, 0, payload.length);
 			raf.close();
@@ -147,12 +122,12 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 	public byte[] readChunk(String ChunkHandle, int offset, int NumberOfBytes) {
 		try {
 			//If the file for the chunk does not exist the return null
-			boolean exists = (new File(filePath + ChunkHandle)).exists();
+			boolean exists = (new File(Constants.filePath + ChunkHandle)).exists();
 			if (exists == false) return null;
 			
 			//File for the chunk exists then go ahead and read it
 			byte[] data = new byte[NumberOfBytes];
-			RandomAccessFile raf = new RandomAccessFile(filePath + ChunkHandle, "rw");
+			RandomAccessFile raf = new RandomAccessFile(Constants.filePath + ChunkHandle, "rw");
 			raf.seek(offset);
 			raf.read(data, 0, NumberOfBytes);
 			raf.close();
@@ -273,10 +248,10 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 		masterWriteLock.lock();
 		try {
 			if(hasLease) {
-				masterWriteStream.writeInt(HeartBeatWithLease);
+				masterWriteStream.writeInt(Constants.HeartBeatWithLease);
 				masterWriteStream.writeLong(Long.parseLong(leaseHandle));
 			}
-			else masterWriteStream.writeInt(HeartBeatNoLease);
+			else masterWriteStream.writeInt(Constants.HeartBeatNoLease);
 			
 			masterWriteStream.writeInt(chunkHandles.size());
 			for(int i = 0; i < chunkHandles.size(); i++) {
@@ -296,12 +271,12 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 		fileMap = new HashMap<String, RandomAccessFile>();
 		chunkMap = new HashMap<String, ChunkInfo>();
 		
-		File dir = new File(filePath);
+		File dir = new File(Constants.filePath);
 		String[] filenames = dir.list();
 		for(int i = 0; i < filenames.length; i++) {
 			try {
 				//create new RAF and add to file map
-				RandomAccessFile raf = new RandomAccessFile(filePath+filenames[i], "rw");
+				RandomAccessFile raf = new RandomAccessFile(Constants.filePath+filenames[i], "rw");
 				fileMap.put(filenames[i], raf);
 				//add chunks in file to file map
 				while(raf.getFilePointer() < raf.length()) {
@@ -324,7 +299,15 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 		}
 		
 		//connect to master
-		masterPort = 0; //TODO need to get master port (command line arg? http server? IDK)
+		try {
+			RandomAccessFile config = new RandomAccessFile(new File("config"), "r");	
+			masterIP = config.readLine();
+			masterPort = config.readInt();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
 		try {
 			Socket masterSocket = new Socket(masterIP, masterPort);
 			masterWriteStream = new ObjectOutputStream(masterSocket.getOutputStream());
@@ -347,7 +330,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 			//TODO check if leases need renewals and send renewal request
 			
 			try {
-				Thread.sleep(HeartBeatInterval);
+				Thread.sleep(Constants.HeartBeatInterval);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -364,7 +347,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 			while(true) {
 				int CMD = Client.ReadIntFromInputStream("chunkserver:"+localhostIP, masterReadStream);
 				switch(CMD) {
-				case SendLease:
+				case Constants.SendLease:
 					//Master gives ownership of lease to chunkserver
 					String leaseHandle = Long.toString(Client.ReadLongFromInputStream("chunkserver:"+localhostIP, masterReadStream));
 					long leaseGivenTime = Client.ReadLongFromInputStream("chunkserver:"+localhostIP, masterReadStream);
@@ -374,10 +357,10 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 						if(chunk != null) {
 							ownedLeases.add(leaseHandle);
 							chunk.setLease(true, leaseGivenTime);
-							masterWriteStream.writeInt(TRUE);
+							masterWriteStream.writeInt(Constants.TRUE);
 						}
 						else {
-							masterWriteStream.writeInt(FALSE);
+							masterWriteStream.writeInt(Constants.FALSE);
 						}
 						masterWriteStream.flush();
 					} catch (IOException e) {
@@ -385,7 +368,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 					}
 					masterWriteLock.unlock();
 					break;
-				case DeleteChunks:
+				case Constants.DeleteChunks:
 					break;
 				}
 			}
@@ -445,32 +428,32 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 				int CMD = Client.ReadIntFromInputStream("ChunkServer.ClientThread:"+localhostIP, clientReadStream);
 				try {
 					switch(CMD) {
-					case Ping:
-						clientWriteStream.writeInt(TRUE);
+					case Constants.Ping:
+						clientWriteStream.writeInt(Constants.TRUE);
 						clientWriteStream.flush();
 						break;
-					case ReadFirstRecord:
-						clientWriteStream.writeInt(TRUE);
+					case Constants.ReadFirstRecord:
+						clientWriteStream.writeInt(Constants.TRUE);
 						clientWriteStream.flush();
 						break;
-					case ReadLastRecord:
-						clientWriteStream.writeInt(TRUE);
+					case Constants.ReadLastRecord:
+						clientWriteStream.writeInt(Constants.TRUE);
 						clientWriteStream.flush();
 						break;
-					case ReadNextRecord:
-						clientWriteStream.writeInt(TRUE);
+					case Constants.ReadNextRecord:
+						clientWriteStream.writeInt(Constants.TRUE);
 						clientWriteStream.flush();
 						break;
-					case ReadPrevRecord:
-						clientWriteStream.writeInt(TRUE);
+					case Constants.ReadPrevRecord:
+						clientWriteStream.writeInt(Constants.TRUE);
 						clientWriteStream.flush();
 						break;
-					case AppendRecord:
-						clientWriteStream.writeInt(TRUE);
+					case Constants.AppendRecord:
+						clientWriteStream.writeInt(Constants.TRUE);
 						clientWriteStream.flush();
 						break;
-					case DataToWrite:
-						clientWriteStream.writeInt(TRUE);
+					case Constants.DataToWrite:
+						clientWriteStream.writeInt(Constants.TRUE);
 						clientWriteStream.flush();
 						break;
 					default:
