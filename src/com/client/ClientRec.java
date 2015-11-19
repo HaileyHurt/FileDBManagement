@@ -51,6 +51,7 @@ public class ClientRec {
             masterOutput = new ObjectOutputStream(clientSocket.getOutputStream());
             masterInput = new ObjectInputStream(clientSocket.getInputStream());
             client = new Client();
+            
         }
 
         catch

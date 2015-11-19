@@ -56,6 +56,54 @@ public class ClientFS {
             System.out.println("Error initializing clientfs (ClientFS:43)");
         }
     }
+    
+    public FSReturnVals intToFSReturnVal(int i)
+    {
+        switch (i)
+        {
+            case 0:
+                return DirExists;
+                break;
+            case 1:
+                return DirNotEmpty;
+                break;
+            case 2:
+                return SrcDirNotExistent;
+                break;
+            case 3:
+                return DestDirExists;
+                break;
+            case 4:
+                return FileExists;
+                break;
+            case 5:
+                return FileDoesNotExist;
+                break;
+            case 6:
+                return BadHandle;
+                break;
+            case 7:
+                return RecordTooLong;
+                break;
+            case 8:
+                return BadRecID;
+                break;
+            case 9:
+                return RecDoesNotExist;
+                break;
+            case 10:
+                return NotImplemented;
+                break;
+            case 11:
+                return Success;
+                break;
+            case 12:
+                return Fail;
+                break;
+                
+                
+        }
+    }
 
 	/**
 	 * Creates the specified dirname in the src directory Returns
@@ -67,6 +115,7 @@ public class ClientFS {
 	 */
 	public FSReturnVals CreateDir(String src, String dirname)
     {
+        FSReturnVals outcome;
         try
         {            
             byte[] srcBytes = src.getBytes();
@@ -80,13 +129,15 @@ public class ClientFS {
             
             masterOutput.flush();
             
-            return masterInput.readUTF();
+            int i = masterInput.readInt();
+            outcome = intToFSReturnVal(i);
         }
         catch
         {
+            outcome = FSReturnVals.Fail;
             System.out.println("Error creating directory (ClientFS:78)");
         }
-		return FSReturnVals.Fail;
+		return outcome;
 	}
 
 	/**
@@ -98,6 +149,7 @@ public class ClientFS {
 	 */
 	public FSReturnVals DeleteDir(String src, String dirname)
     {
+        FSReturnVals outcome;
 		try
         {
             masterOutput.writeInt(DELETE_DIR);
@@ -112,13 +164,15 @@ public class ClientFS {
             
             masterOutput.flush();
             
-            return masterInput.readUTF();
+            int i = masterInput.readInt();
+            outcome = intToFSReturnVal(i);
         }
         catch
         {
+            outcome = FSReturnVals.Fail;
             System.out.println("Error deleting directory (FlientFS:103)");
         }
-        return FSReturnVals.Fail;
+        return outcome;
 	}
 
 	/**
@@ -131,6 +185,7 @@ public class ClientFS {
 	 */
 	public FSReturnVals RenameDir(String src, String NewName)
     {
+        FSReturnVals outcome;
 		try
         {
             masterOutput.writeInt(RENAME_DIR);
@@ -145,13 +200,15 @@ public class ClientFS {
             
             masterOutput.flush();
             
-            return masterInput.readUTF();
+            int i = masterInput.readInt();
+            outcome = intToFSReturnVal(i);
         }
         catch
         {
+            outcome = FSReturnVals.Fail;
             System.out.println("Error renaming directory (ClientFS:129)");
         }
-        return FSReturnVals.Fail;
+        return outcome;
 	}
 
 	/**
@@ -163,6 +220,7 @@ public class ClientFS {
 	 */
 	public String[] ListDir(String tgt)
     {
+        FSReturnVals outcome;
         try
         {
             masterOutput.writeInt(LIST_DIR);
@@ -187,7 +245,7 @@ public class ClientFS {
         {
             System.out.println("Error listing directories (ClientFS:151)");
         }
-        return FSReturnVals.Fail;
+        return null;
         /*
          */
 	}
@@ -201,6 +259,7 @@ public class ClientFS {
 	 */
 	public FSReturnVals CreateFile(String tgtdir, String filename)
     {
+        FSReturnVals outcome;
 		try
         {
             masterOutput.writeInt(CREATE_FILE);
@@ -215,13 +274,15 @@ public class ClientFS {
             
             masterOutput.flush();
             
-            return masterOutput.readUTF();
+            int i = masterOutput.readInt();
+            outcome = intToFSReturnVal(i);
         }
         catch
         {
+            outcome = FSReturnVals.Fail;
             System.out.println("Error creating file (ClientFS:178)");
         }
-        return FSReturnVals.Fail;
+        return outcome;
 	}
 
 	/**
@@ -233,6 +294,7 @@ public class ClientFS {
 	 */
 	public FSReturnVals DeleteFile(String tgtdir, String filename)
     {
+        FSReturnVals outcome;
 		try
         {
             masterOutput.writeInt(DELETE_FILE);
@@ -247,13 +309,15 @@ public class ClientFS {
             
             masterOutput.flush();
             
-            return masterOutput.readUTF();
+            int i = masterOutput.readInt();
+            outcome = intToFSReturnVal(i);
         }
         catch
         {
+            outcome = FSReturnVals.Fail;
             System.out.println("Error creating file (ClientFS:203)");
         }
-        return FSReturnVals.Fail;
+        return outcome;
 	}
 
 	/**
@@ -265,6 +329,7 @@ public class ClientFS {
 	 */
 	public FSReturnVals OpenFile(String FilePath, FileHandle ofh)
     {
+        FSReturnVals outcome;
 		try
         {
             masterOutput.writeInt(OPEN_FILE);
@@ -275,13 +340,15 @@ public class ClientFS {
             
             masterOutput.flush();
             
-            return masterOutput.readUTF();
+            int i = masterOutput.readInt();
+            outcome = intToFSReturnVal(i);
         }
         catch
         {
+            outcome = FSReturnVals.Fail;
             System.out.println("Error opening file (ClientFS:228)");
         }
-        return FSReturnVals.Fail;
+        return outcome;
 	}
 
 	/**
@@ -291,19 +358,22 @@ public class ClientFS {
 	 */
 	public FSReturnVals CloseFile(FileHandle ofh)
     {
+        FSReturnVals outcome;
 		try
         {
             masterOutput.writeInt(CLOSE_FILE);
             masterOutput.writeObject(ofh);
             masterOutput.flush();
             
-            return masterOutput.readUTF();
+            int i = masterOutput.readInt();
+            outcome = intToFSReturnVal(i);
         }
         catch
         {
+            outcome = FSReturnVals.Fail;
             System.out.println("Error opening file (ClientFS:228)");
         }
-        return FSReturnVals.Fail;
+        return outcome;
 	}
 
 }
