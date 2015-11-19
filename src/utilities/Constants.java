@@ -19,14 +19,8 @@ public class Constants {
 	public static final int HeartBeatWithLease = 3;
 	
 	//client to chunkserver
-	public static final int Ping = 4;
-	public static final int ReadFirstRecord = 5;
-	public static final int ReadLastRecord = 6;
-	public static final int ReadNextRecord = 7;
-	public static final int ReadPrevRecord = 8;
-	public static final int AppendRecord = 9;
-	public static final int DataToWrite = 10;
-	public static final int DeleteRecord = 31;
+	public static final int PING = 4;
+	public static final int DATA_TO_WRITE = 5;
 	
 	//master to chunkserver
 	public static final int SendLease = 11;

@@ -281,9 +281,9 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 				fileMap.put(filenames[i], raf);
 				//add chunks in file to file map
 				while(raf.getFilePointer() < raf.length()) {
+					long pos = raf.getFilePointer();
 					String chunkHandle = Long.toString(raf.readLong());
 					chunkHandles.add(chunkHandle);
-					long pos = raf.getFilePointer();
 					if(chunkMap.put(chunkHandle, new ChunkInfo(filenames[i], pos)) != null) {
 						//TODO this was a duplicate- look up how to handle duplicates
 					}
@@ -397,8 +397,8 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 						
 						chunkFile.seek(pos);
 						chunkFile.writeLong(newHandle);
-						//pad new chunk with 0s to indicate empty space
-						for(int i = 0; i < Constants.ChunkSize; i++) chunkFile.writeInt(0);
+						//pad rest of chunk with 0s to indicate empty space
+						for(int i = 0; i < Constants.ChunkSize - Long.BYTES; i++) chunkFile.writeInt(0);
 						chunkMap.put(Long.toString(newHandle), new ChunkInfo(filename, pos));
 					} catch (IOException e) {
 						System.out.println("Error occurred while creating chunk");
@@ -469,6 +469,56 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 			clientReadStream = in;
 		}
 		
+		private void readFirstRecord() {
+			long handle = Client.ReadLongFromInputStream("client:"+socket.getInetAddress(), clientReadStream);
+			ChunkInfo chunk = chunkMap.get(Long.toString(handle));
+			try {
+				if(chunk == null) {
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;
+				}
+				
+				RandomAccessFile file = fileMap.get(chunk.getFilename());
+				if(file == null) {
+					clientWriteStream.writeInt(Constants.FALSE);
+					clientWriteStream.flush();
+					return;
+				}
+				
+				file.seek(chunk.getPosition() + Long.BYTES); //seek to start of first record
+				int recSize = file.readInt();
+				byte[] data = new byte[recSize];
+				file.read(data, 0, recSize);
+				clientWriteStream.writeInt(recSize);
+				clientWriteStream.write(data);
+				clientWriteStream.flush();
+			}
+			catch (IOException e) {
+				e.printStackTrace();
+			}	
+		}
+		
+		private void readLastRecord() {
+			
+		}
+		
+		private void readNextRecord() {
+			
+		}
+		
+		private void readPrevRecord() {
+			
+		}
+		
+		private void appendRecord() {
+			
+		}
+		
+		private void deleteRecord() {
+			
+		}
+		
 		@Override
 		public void run() {
 			
@@ -477,33 +527,34 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 				int CMD = Client.ReadIntFromInputStream("ChunkServer.ClientThread:"+localhostIP, clientReadStream);
 				try {
 					switch(CMD) {
-					case Constants.Ping:
+					case Constants.PING:
 						clientWriteStream.writeInt(Constants.TRUE);
 						clientWriteStream.flush();
 						break;
-					case Constants.ReadFirstRecord:
+					case Constants.READ_FIRST_RECORD:
+						readFirstRecord();
+						break;
+					case Constants.READ_LAST_RECORD:
 						clientWriteStream.writeInt(Constants.TRUE);
 						clientWriteStream.flush();
 						break;
-					case Constants.ReadLastRecord:
+					case Constants.READ_NEXT_RECORD:
 						clientWriteStream.writeInt(Constants.TRUE);
 						clientWriteStream.flush();
 						break;
-					case Constants.ReadNextRecord:
+					case Constants.READ_PREV_RECORD:
 						clientWriteStream.writeInt(Constants.TRUE);
 						clientWriteStream.flush();
 						break;
-					case Constants.ReadPrevRecord:
+					case Constants.APPEND_RECORD:
 						clientWriteStream.writeInt(Constants.TRUE);
 						clientWriteStream.flush();
 						break;
-					case Constants.AppendRecord:
+					case Constants.DATA_TO_WRITE:
 						clientWriteStream.writeInt(Constants.TRUE);
 						clientWriteStream.flush();
 						break;
-					case Constants.DataToWrite:
-						clientWriteStream.writeInt(Constants.TRUE);
-						clientWriteStream.flush();
+					case Constants.DELETE_RECORD:
 						break;
 					default:
 						break;
@@ -540,8 +591,10 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 	 * and whether it currently owns the lease.
 	 */
 	public class ChunkInfo {
+		//chunk: first 8 bytes are the chunkhandle, rest is data
+		
 		private String filename;
-		private long position;
+		private long position; //start of chunk
 		private boolean lease;
 		private long leaseGivenTime;
 		private Lock leaseLock;
