@@ -143,9 +143,6 @@ public class ClientRec {
             
             int i = masterInput.readInt();
             outcome = intToFSReturnVal(i)
-        
-            int i = masterInput.readInt();
-            outcome = intToFSReturnVal(i)
 
         }
         catch (Exception e)
