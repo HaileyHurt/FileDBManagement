@@ -26,6 +26,7 @@ public class Constants {
 	public static final int ReadPrevRecord = 8;
 	public static final int AppendRecord = 9;
 	public static final int DataToWrite = 10;
+	public static final int DeleteRecord = 31;
 	
 	//master to chunkserver
 	public static final int SendLease = 11;

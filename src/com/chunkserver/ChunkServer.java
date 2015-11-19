@@ -14,7 +14,6 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-//import java.util.Arrays;
 
 
 
@@ -44,6 +43,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 	HashMap<String, ChunkInfo> chunkMap;
 	Vector<String> chunkHandles;
 	Vector<String> ownedLeases;
+	String[] filenames;
 	
 	String localhostIP;
 	String masterIP;
@@ -260,7 +260,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 			
 			masterWriteStream.flush();
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
+			System.out.println("Error occurred sending heartbeat");
 			e1.printStackTrace();
 		}
 		masterWriteLock.unlock();
@@ -273,7 +273,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 		chunkMap = new HashMap<String, ChunkInfo>();
 		
 		File dir = new File(Constants.filePath);
-		String[] filenames = dir.list();
+		filenames = dir.list();
 		for(int i = 0; i < filenames.length; i++) {
 			try {
 				//create new RAF and add to file map
@@ -306,7 +306,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 			config.readLine(); //discard line
 			masterPort = config.readInt();
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
+			System.out.println("Error occurred reading config file");
 			e1.printStackTrace();
 		}
 		
@@ -315,10 +315,9 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 			masterWriteStream = new ObjectOutputStream(masterSocket.getOutputStream());
 			masterReadStream = new ObjectInputStream(masterSocket.getInputStream());
 		} catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
+			System.out.println("Error occurred connecting to master");
 			e.printStackTrace();
 		}
 		
@@ -327,7 +326,7 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 		try {
 			clientServerSocket = new ServerSocket(serverPort);
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
+			System.out.println("Error occurred opening clientServerSocket");
 			e1.printStackTrace();
 		}
 		serverPort = clientServerSocket.getLocalPort();
@@ -344,7 +343,6 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 			try {
 				Thread.sleep(Constants.HeartBeatInterval);
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -381,8 +379,47 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 					masterWriteLock.unlock();
 					break;
 				case Constants.CreateChunk:
+					long newHandle = Client.ReadLongFromInputStream("chunkserver:"+localhostIP, masterReadStream);
+					String filename = filenames[0]; //always use first file for now
+					RandomAccessFile chunkFile = fileMap.get(filename);
+					try {
+						long pos = chunkFile.length();
+						while(chunkFile.getFilePointer() < chunkFile.length()) {
+							//iterate through file looking for reclaimed chunks
+							long tempPos = chunkFile.getFilePointer();
+							long handle = chunkFile.readLong();
+							if(handle == -1) {
+								pos = tempPos;
+								break;
+							}
+							chunkFile.seek(chunkFile.getFilePointer()+Constants.ChunkSize);
+						}
+						
+						chunkFile.seek(pos);
+						chunkFile.writeLong(newHandle);
+						//pad new chunk with 0s to indicate empty space
+						for(int i = 0; i < Constants.ChunkSize; i++) chunkFile.writeInt(0);
+						chunkMap.put(Long.toString(newHandle), new ChunkInfo(filename, pos));
+					} catch (IOException e) {
+						System.out.println("Error occurred while creating chunk");
+						e.printStackTrace();
+					}
 					break;
 				case Constants.DeleteChunks:
+					int numToDelete = Client.ReadIntFromInputStream("chunkserver:"+localhostIP, masterReadStream);
+					for(int i = 0; i < numToDelete; i++) {
+						long handle = Client.ReadLongFromInputStream("chunkserver:"+localhostIP, masterReadStream);
+						ChunkInfo toDelete = chunkMap.remove(Long.toString(handle));
+						RandomAccessFile file = fileMap.get(toDelete.getFilename());
+						try {
+							file.seek(toDelete.getPosition());
+							//set chunkhandle to -1 to indicate this space is reclaimed by FS
+							file.writeLong(-1);
+						} catch (IOException e) {
+							System.out.println("Error occurred while deleting chunk");
+							e.printStackTrace();
+						}
+					}
 					break;
 				}
 			}
@@ -390,7 +427,6 @@ public class ChunkServer implements ChunkServerInterface, Runnable {
 	}
 	
 	public class ClientListener extends Thread {
-		//TODO check if client threads need to be kept in a vector
 		private ServerSocket clientServerSocket;
 		
 		public ClientListener(ServerSocket ss) {
