@@ -160,6 +160,7 @@ public class ClientRec {
             if(outcome == Constants.TRUE)
             {
                 ClientFS.client.writeChunk(RecordID.chunkhandle, payload, RecordID.byteoffset);
+                outcome = FSReturnVals.Success; 
             }
             else if(outcome == Constants.FALSE)
             {
